@@ -37,32 +37,26 @@ void uncaughtExceptionHandler(NSException *e) {
     }
 }
 
+@interface AppDelegate ()
+
+@property (strong, nonatomic) Stats *stats;
+
+@property (nonatomic) BOOL pBoardWatch;
+@property (nonatomic) BOOL debugMode;
+
+@property (strong, nonatomic) NSArray *pBoardUrls;
+@property (nonatomic) UIBackgroundTaskIdentifier backgroundTask;
+@property (copy, nonatomic) NSString *lastCheckPasteBoardURL;
+
+- (NSString *)getPlatformName;
+- (void)memoryStatus;
+- (void)startPasteBoardTimer;
+- (void)stopPasteBoardTimer;
+- (void)checkPasteBoard;
+
+@end
+
 @implementation AppDelegate
-
-@synthesize window = _window;
-@synthesize tabBarController = _tabBarController;
-
-@synthesize postText;
-@synthesize postTextType;
-@synthesize bookmarkUrl;
-@synthesize urlSchemeDownloadUrl;
-@synthesize reOpenUrl;
-@synthesize addTwitpicAccountName;
-@synthesize startupUrlList;
-@synthesize resendNumber;
-@synthesize launchMode;
-@synthesize reloadInterval;
-@synthesize resendMode;
-@synthesize browserOpenMode;
-@synthesize pcUaMode;
-@synthesize pboardURLOpenTweet;
-@synthesize pboardURLOpenTimeline;
-@synthesize pboardURLOpenBrowser;
-@synthesize pBoardWatchTimer;
-@synthesize willResignActive;
-@synthesize willResignActiveBrowser;
-@synthesize twitpicLinkMode;
-@synthesize needChangeAccount;
 
 #pragma mark - Initialize
 
@@ -89,39 +83,21 @@ void uncaughtExceptionHandler(NSException *e) {
     [self.window addSubview:_statusBarInfo];
     
     //各種初期化
-    postText = BLANK;
-    postTextType = BLANK;
-    bookmarkUrl = BLANK;
-    urlSchemeDownloadUrl = BLANK;
-    reOpenUrl = BLANK;
-    addTwitpicAccountName = BLANK;
+    _postText = BLANK;
+    _postTextType = BLANK;
+    _bookmarkUrl = BLANK;
+    _urlSchemeDownloadUrl = BLANK;
+    _reOpenUrl = BLANK;
+    _addTwitpicAccountName = BLANK;
     
-    resendNumber = 0;
-    resendMode = NO;
-    browserOpenMode = NO;
-    pcUaMode = NO;
-    pboardURLOpenTweet = NO;
-    pboardURLOpenTimeline = NO;
-    pboardURLOpenBrowser = NO;
+    _twitpicLinkMode = NO;
+    _needChangeAccount = NO;
+    _debugMode = NO;
     
-    willResignActive = NO;
-    willResignActiveBrowser = NO;
-    twitpicLinkMode = NO;
-    needChangeAccount = NO;
-    debugMode = NO;
-    
-    startupUrlList = [NSArray arrayWithObject:[USER_DEFAULTS objectForKey:@"HomePageURL"]];
-    
-    if ( launchOptions == NULL ) {
-        launchMode = 0;
-    } else {
-        launchMode = 1;
-    }
+    _startupUrlList = [NSArray arrayWithObject:[USER_DEFAULTS objectForKey:@"HomePageURL"]];
     
     self.window = [[UIWindow alloc] initWithFrame:[[UIScreen mainScreen] bounds]];
     
-//    TweetViewController *mainView = [[TweetViewController alloc] initWithNibName:NSStringFromClass([TweetViewController class])
-//                                                                       bundle:nil];
     MainViewController *mainView = [[MainViewController alloc] init];
     BaseNavigationController *mainNavigation = [[BaseNavigationController alloc] initWithRootViewController:mainView];
     mainNavigation.viewControllers = @[mainView];
@@ -151,10 +127,6 @@ void uncaughtExceptionHandler(NSException *e) {
     
     if ( notification.userInfo != nil ) {
     
-        pboardURLOpenTweet = YES;
-        pboardURLOpenTimeline = YES;
-        pboardURLOpenBrowser = YES;
-        
         NSNotification *pboardNotification =
         [NSNotification notificationWithName:@"pboardNotification"
                                       object:self
@@ -172,7 +144,7 @@ void uncaughtExceptionHandler(NSException *e) {
 
     if ( [schemeURL.absoluteString hasPrefix:@"fhttp"] || [schemeURL.absoluteString hasPrefix:@"fhttps"]) {
         
-        urlSchemeDownloadUrl = [schemeURL.absoluteString substringFromIndex:1];
+        _urlSchemeDownloadUrl = [schemeURL.absoluteString substringFromIndex:1];
     }
     
     return YES;
@@ -188,54 +160,52 @@ void uncaughtExceptionHandler(NSException *e) {
     
     if ( [hardwareName hasPrefix:@"iPhone2"] ) {
         hardwareName = @"iPhone 3GS";
-//        reloadInterval = 0.5;
     } else if ( [hardwareName hasPrefix:@"iPhone3"] ) {
         hardwareName = @"iPhone 4";
-//        reloadInterval = 0.3;
     } else if ( [hardwareName hasPrefix:@"iPhone4"] ) {
         hardwareName = @"iPhone 4S";
-//        reloadInterval = 0.15;
-    } else if ( [hardwareName hasPrefix:@"iPhone5"] ) {
+    } else if ( [hardwareName hasPrefix:@"iPhone5,1"] ) {
         hardwareName = @"iPhone 5";
-//        reloadInterval = 0.15;
+    } else if ( [hardwareName hasPrefix:@"iPhone5,2"] ) {
+        hardwareName = @"iPhone 5 CDMA";
+    } else if ( [hardwareName hasPrefix:@"iPhone5,3"] ) {
+        hardwareName = @"iPhone 5c";
+    } else if ( [hardwareName hasPrefix:@"iPhone5,4"] ) {
+        hardwareName = @"iPhone 5c CDMA";
+    } else if ( [hardwareName hasPrefix:@"iPhone6,1"] ) {
+        hardwareName = @"iPhone 5s";
+    } else if ( [hardwareName hasPrefix:@"iPhone6,2"] ) {
+        hardwareName = @"iPhone 5s CDMA";
     } else if ( [hardwareName hasPrefix:@"iPad1"] ) {
         hardwareName = @"iPad";
-//        reloadInterval = 0.25;
     } else if ( [hardwareName hasPrefix:@"iPad2"] ) {
         hardwareName = @"iPad 2gen";
-//        reloadInterval = 0.15;
     } else if ( [hardwareName hasPrefix:@"iPad3"] ) {
         hardwareName = @"iPad 3gen";
-//        reloadInterval = 0.15;
     } else if ( [hardwareName hasPrefix:@"x86_64"] ||
-               [hardwareName hasPrefix:@"i386"] ) {
+                [hardwareName hasPrefix:@"i386"] ) {
         hardwareName = @"iOS Simulator";
-//        reloadInterval = 0.3;
     } else {
         hardwareName = @"OtherDevice";
-//        reloadInterval = 0.35;
     }
     
     NSLog(@"Run with %@@%@", hardwareName, FIRMWARE_VERSION);
-    
-    reloadInterval = 0.3;
-    
     return hardwareName;
 }
 
 - (void)memoryStatus {
     
-    if ( debugMode ) {
+    if ( _debugMode ) {
      
-        [stats removeFromSuperview];
-        stats = nil;
-        debugMode = NO;
+        [_stats removeFromSuperview];
+        _stats = nil;
+        _debugMode = NO;
         
     } else {
 
-        stats = [[Stats alloc] initWithFrame:CGRectMake(5, 25, 100.0, 60.0)];
-        [self.window addSubview:stats];
-        debugMode = YES;
+        _stats = [[Stats alloc] initWithFrame:CGRectMake(5, 25, 100.0, 60.0)];
+        [self.window addSubview:_stats];
+        _debugMode = YES;
     }
 }
 
@@ -247,29 +217,79 @@ void uncaughtExceptionHandler(NSException *e) {
     
     @try {
         
-        lastCheckPasteBoardURL = P_BOARD.string;
+        _lastCheckPasteBoardURL = P_BOARD.string;
         
-    }@catch ( NSException *e ) {
+    } @catch ( NSException *e ) {
         
         [P_BOARD setString:BLANK];
-        lastCheckPasteBoardURL = BLANK;
+        _lastCheckPasteBoardURL = BLANK;
     }
     
-    pBoardUrls = BLANK_ARRAY;
+    _pBoardUrls = BLANK_ARRAY;
     
-    pBoardWatchTimer = [NSTimer scheduledTimerWithTimeInterval:1.0f
-                                                        target:self
-                                                      selector:@selector(checkPasteBoard)
-                                                      userInfo:nil
-                                                       repeats:YES];
-    [pBoardWatchTimer fire];
+    dispatch_async(dispatch_get_global_queue(0, 0), ^{
+        dispatch_sync(dispatch_get_global_queue(0, 0), ^{
+            
+            [self setPBoardWatch:YES];
+            while (self.pBoardWatch) {
+                
+                NSString *pBoardString = [P_BOARD valueForPasteboardType:@"public.text"];
+                if ( ![EmptyCheck string:pBoardString] ) {
+                    
+                    pBoardString = P_BOARD.URL.absoluteString;
+                }
+                
+                //文字列がない場合は終了
+                if ( ![EmptyCheck string:pBoardString] ) {
+                    
+                    continue;
+                }
+                
+                //ペーストボードの内容が変化チェック
+                if ( ![pBoardString isEqualToString:_lastCheckPasteBoardURL] ) {
+                    
+                    //URLがあるか確認
+                    _pBoardUrls = [NSArray arrayWithArray:[pBoardString URLs]];
+                    
+                    if ( _pBoardUrls.count == 0 ) {
+                        
+                        continue;
+                    }
+                    
+                    _lastCheckPasteBoardURL = pBoardString;
+                    
+                    //通知を行う
+                    UILocalNotification *localPush = [[UILocalNotification alloc] init];
+                    localPush.timeZone = [NSTimeZone defaultTimeZone];
+                    localPush.fireDate = [NSDate dateWithTimeIntervalSinceNow:0];
+                    localPush.alertBody = _lastCheckPasteBoardURL;
+                    localPush.userInfo = @{ @"pboardURL" : [_pBoardUrls objectAtIndex:0] };
+                    [[UIApplication sharedApplication] scheduleLocalNotification:localPush];
+                }
+                
+                [NSThread sleepForTimeInterval:0.1];
+            }
+            
+            UIApplication  *application = [UIApplication sharedApplication];
+            [application endBackgroundTask:self.backgroundTask];
+            [self setBackgroundTask:UIBackgroundTaskInvalid];
+        });
+    });
+    
+//    _pBoardWatchTimer = [NSTimer scheduledTimerWithTimeInterval:1.0f
+//                                                        target:self
+//                                                      selector:@selector(checkPasteBoard)
+//                                                      userInfo:nil
+//                                                       repeats:YES];
+//    [_pBoardWatchTimer fire];
 }
 
 - (void)stopPasteBoardTimer {
     
     NSLog(@"stopPasteBoardTimer");
     
-    [pBoardWatchTimer invalidate];
+    [self setPBoardWatch:NO];
+//    [_pBoardWatchTimer invalidate];
 }
 
 - (void)checkPasteBoard {
@@ -280,37 +300,42 @@ void uncaughtExceptionHandler(NSException *e) {
         
         NSString *pBoardString = P_BOARD.string;
         
-//        NSLog(@"pBoardString: %@", pBoardString);
-//        NSLog(@"lastCheckPasteBoardURL: %@", lastCheckPasteBoardURL);
-        
         if ( ![EmptyCheck string:pBoardString] ) {
             
             pBoardString = P_BOARD.URL.absoluteString;
         }
         
         //文字列がない場合は終了
-        if ( ![EmptyCheck string:pBoardString] ) return;
+        if ( ![EmptyCheck string:pBoardString] ) {
+         
+            return;
+        }
         
         //ペーストボードの内容が変化チェック
-        if ( ![pBoardString isEqualToString:lastCheckPasteBoardURL] ) {
+        if ( ![pBoardString isEqualToString:_lastCheckPasteBoardURL] ) {
             
             //URLがあるか確認
-            pBoardUrls = [NSArray arrayWithArray:[pBoardString URLs]];
+            _pBoardUrls = [NSArray arrayWithArray:[pBoardString URLs]];
             
-            if ( pBoardUrls.count == 0 ) return;
+            if ( _pBoardUrls.count == 0 ) {
+                
+                return;
+            }
             
-            lastCheckPasteBoardURL = pBoardString;
+            _lastCheckPasteBoardURL = pBoardString;
             
             //通知を行う
             UILocalNotification *localPush = [[UILocalNotification alloc] init];
             localPush.timeZone = [NSTimeZone defaultTimeZone];
             localPush.fireDate = [NSDate dateWithTimeIntervalSinceNow:0];
-            localPush.alertBody = lastCheckPasteBoardURL;
-            localPush.userInfo = @{ @"pboardURL" : [pBoardUrls objectAtIndex:0] };
+            localPush.alertBody = _lastCheckPasteBoardURL;
+            localPush.userInfo = @{ @"pboardURL" : [_pBoardUrls objectAtIndex:0] };
             [[UIApplication sharedApplication] scheduleLocalNotification:localPush];
         }
         
-    }@catch ( NSException *e ) { }
+        [self setBackgroundTask:UIBackgroundTaskInvalid];
+        
+    } @catch ( NSException *e ) { }
 }
 
 #pragma mark - Application
@@ -318,9 +343,6 @@ void uncaughtExceptionHandler(NSException *e) {
 - (void)applicationWillResignActive:(UIApplication *)application {
     
 //    NSLog(@"applicationWillResignActive");
-    
-    willResignActive = YES;
-    willResignActiveBrowser = YES;
 }
 
 - (void)applicationWillEnterForeground:(UIApplication *)application {
@@ -332,7 +354,10 @@ void uncaughtExceptionHandler(NSException *e) {
                                                                         userInfo:nil];
     [[NSNotificationCenter defaultCenter] postNotification:statusBarNotification];
     
-    if ( pBoardWatchTimer.isValid ) [self stopPasteBoardTimer];
+    [self stopPasteBoardTimer];
+//    if ( _pBoardWatchTimer.isValid ) {
+//        
+//    }
 }
 
 - (void)applicationDidBecomeActive:(UIApplication *)application {
@@ -354,23 +379,28 @@ void uncaughtExceptionHandler(NSException *e) {
                                                                         userInfo:nil];
     [[NSNotificationCenter defaultCenter] postNotification:statusBarNotification];
     
-    willResignActive = NO;
-    willResignActiveBrowser = NO;
-    
-    if ( !pBoardWatchTimer.isValid ) [self startPasteBoardTimer];
-    
-    UIBackgroundTaskIdentifier weakTask = backgroundTask;
-	backgroundTask = [application beginBackgroundTaskWithExpirationHandler: ^{
+    self.backgroundTask = [application beginBackgroundTaskWithExpirationHandler:^{
         
-        [application endBackgroundTask:weakTask];
+        if ( self.backgroundTask != UIBackgroundTaskInvalid ) {
+            
+            [application endBackgroundTask:self.backgroundTask];
+            [self setBackgroundTask:UIBackgroundTaskInvalid];
+        }
     }];
+    
+    [self startPasteBoardTimer];
+    
+//    if ( !_pBoardWatchTimer.isValid ) {
+//        
+//        
+//    }
 }
 
 #pragma mark - View
 
 - (void)dealloc {
 
-    if ( pBoardWatchTimer.isValid ) [self stopPasteBoardTimer];
+//    if ( _pBoardWatchTimer.isValid ) [self stopPasteBoardTimer];
     
     self.tabBarController = nil;
     self.window = nil;

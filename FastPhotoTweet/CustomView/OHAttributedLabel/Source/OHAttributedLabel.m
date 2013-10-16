@@ -402,25 +402,29 @@ NSDataDetector* sharedReusableDataDetector(NSTextCheckingTypes types)
 		? [self.delegate attributedLabel:self shouldFollowLink:linkToOpen] : YES;
         
 		if ( openLink ) {
-        
-            NSString *urlString = linkToOpen.extendedURL.absoluteString;
+            
+            NSMutableString *urlString = [linkToOpen.extendedURL.absoluteString mutableCopy];
+            [urlString replaceOccurrencesOfString:@"%E2%80%9D"
+                                       withString:@""
+                                          options:0
+                                            range:NSMakeRange(0, urlString.length)];
             
             if ( urlString != nil && ![urlString isEqualToString:@""] ) {
              
                 if ( [FullSizeImage checkImageUrl:urlString] ) {
                     
-                    NSNotification *notification =[NSNotification notificationWithName:@"OpenTimelineImage"
-                                                                                object:self
-                                                                              userInfo:@{@"URL" : urlString}];
+                    NSNotification *notification = [NSNotification notificationWithName:@"OpenTimelineImage"
+                                                                                 object:self
+                                                                               userInfo:@{@"URL" : urlString}];
                     
                     //通知を実行
                     [[NSNotificationCenter defaultCenter] postNotification:notification];
                     
                 } else {
                     
-                    NSNotification *notification =[NSNotification notificationWithName:@"OpenTimelineURL"
-                                                                                object:self
-                                                                              userInfo:@{@"URL" : urlString}];
+                    NSNotification *notification = [NSNotification notificationWithName:@"OpenTimelineURL"
+                                                                                 object:self
+                                                                               userInfo:@{@"URL" : urlString}];
                     
                     //通知を実行
                     [[NSNotificationCenter defaultCenter] postNotification:notification];

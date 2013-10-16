@@ -7,8 +7,6 @@
 
 #import "TWCharCounter.h"
 
-#define BLANK @""
-
 @implementation TWCharCounter
 
 //現在入力されている文字数をt.coを考慮してカウントし、残りの入力可能文字数を返す

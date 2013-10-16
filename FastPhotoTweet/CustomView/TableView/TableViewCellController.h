@@ -13,6 +13,6 @@
 	IBOutlet TableViewCell *cell;
 }
 
-@property (nonatomic, retain) TableViewCell *cell;
+@property (nonatomic, retain) TableViewCell *tableViewCell;
 
 @end

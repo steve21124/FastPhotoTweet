@@ -336,7 +336,7 @@
     for ( TWTweet *tweet in targets ) {
         
         //Tweetを読み込み
-        client = tweet.source;
+        client = tweet.sourceName;
         
         //NG設定を順次読み込む
         for ( NSDictionary *ngData in ngClients ) {

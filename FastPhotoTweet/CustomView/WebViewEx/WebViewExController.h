@@ -35,7 +35,7 @@
     BOOL fullScreen;
     BOOL editing;
     BOOL downloading;
-    BOOL loading;
+    BOOL pageLoading;
 }
 
 @property (retain, nonatomic) GrayView *grayView;
@@ -59,7 +59,7 @@
 @property (strong, nonatomic) IBOutlet SwipeShiftTextField *urlField;
 @property (strong, nonatomic) IBOutlet SwipeShiftTextField *searchField;
 @property (strong, nonatomic) IBOutlet UIBarButtonItem *searchButton;
-@property (strong, nonatomic) IBOutlet UIToolbar *bottomBar;
+@property (strong, nonatomic) IBOutlet UIToolbar *bottomToolBar;
 @property (strong, nonatomic) IBOutlet UIBarButtonItem *composeButton;
 @property (strong, nonatomic) IBOutlet UIBarButtonItem *closeButton;
 @property (strong, nonatomic) IBOutlet UIBarButtonItem *reloadButton;

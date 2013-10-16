@@ -36,12 +36,6 @@
     [self.navigationController popViewControllerAnimated:YES];
 }
 
-- (IBAction)debug:(id)sender {
-    
-    AppDelegate *appDelegate = (AppDelegate *)[[UIApplication sharedApplication] delegate];
-    [appDelegate memoryStatus];
-}
-
 - (void)viewDidUnload {
 
     [self setTextView:nil];

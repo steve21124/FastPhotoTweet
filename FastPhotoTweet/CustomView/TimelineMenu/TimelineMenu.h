@@ -50,7 +50,7 @@ typedef enum {
 @property (retain, nonatomic) UIToolbar *topBar;
 @property (retain, nonatomic) UIBarButtonItem *cancelButton;
 @property (retain, nonatomic) UIBarButtonItem *backButton;
-@property (retain, nonatomic) UIBarButtonItem *space;
+@property (retain, nonatomic) UIBarButtonItem *spaceItem;
 @property (retain, nonatomic) UITableView *menuTable;
 
 - (void)pushCancelButton;
@@ -60,7 +60,7 @@ typedef enum {
 
 - (void)startRemoveAllTimer;
 
-- (void)removeAllItems;
+- (void)removeAllMenuItems;
 - (void)addNewListItems;
 
 @end

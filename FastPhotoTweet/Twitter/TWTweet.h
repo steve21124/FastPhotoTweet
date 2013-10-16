@@ -42,7 +42,7 @@ typedef enum {
 @property (nonatomic, copy) NSString *infoText;
 @property (nonatomic, copy) NSString *inReplyToID;
 @property (nonatomic, copy) NSString *tweetID;
-@property (nonatomic, copy) NSString *source;
+@property (nonatomic, copy) NSString *sourceName;
 @property (nonatomic, copy) NSString *createdAt;
 
 //RTしたユーザー
@@ -55,8 +55,8 @@ typedef enum {
 @property (nonatomic, copy) NSString *favUser;
 
 //Info
-@property (nonatomic) CellTextColor textColor;
-@property (nonatomic) CGFloat cellHeight;
+@property (nonatomic) CellTextColor tweetTextColor;
+@property (nonatomic) CGFloat timelineCellHeight;
 @property (nonatomic) CGFloat menuCellHeight;
 @property (nonatomic) BOOL isMyTweet;
 @property (nonatomic) BOOL isReply;
@@ -72,7 +72,7 @@ typedef enum {
 
 //表示用の情報関連
 + (TWTweet *)tweetWithDictionary:(NSDictionary *)tweetDictionary;
-+ (UIColor *)getTextColor:(CellTextColor)color;
++ (UIColor *)getTweetTextColor:(CellTextColor)color;
 - (void)createTimelineCellInfo;
 
 @end

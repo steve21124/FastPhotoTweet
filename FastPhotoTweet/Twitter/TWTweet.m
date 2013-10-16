@@ -36,7 +36,7 @@
     NSLog(@"infoText: %@", self.infoText);
     NSLog(@"inReplyToID: %@", self.inReplyToID);
     NSLog(@"tweetID: %@", self.tweetID);
-    NSLog(@"source: %@", self.source);
+    NSLog(@"source: %@", self.sourceName);
     NSLog(@"createdAt: %@", self.createdAt);
     
     NSLog(@"rtUserName: %@", self.rtUserName);
@@ -44,8 +44,8 @@
     NSLog(@"rtIconSearchPath: %@", self.rtIconSearchPath);
     NSLog(@"rtID: %@", self.rtID);
     
-    NSLog(@"textColor: %d", self.textColor);
-    NSLog(@"cellHeight: %.0f", self.cellHeight);
+    NSLog(@"textColor: %d", self.tweetTextColor);
+    NSLog(@"cellHeight: %.0f", self.timelineCellHeight);
     NSLog(@"isMyTweet: %@", self.isMyTweet ? @"YES" : @"NO");
     NSLog(@"isReply: %@", self.isReply ? @"YES" : @"NO");
     NSLog(@"isReTweet: %@", self.isReTweet ? @"YES" : @"NO");
@@ -98,11 +98,11 @@
             [tweet setIconURL:[TWIconResizer iconURL:tweetDictionary[@"target"][@"user"][@"profile_image_url"]
                                             iconSize:iconSize]];
             [tweet setCreatedAt:[TWParser JSTDate:tweetDictionary[@"target_object"][@"created_at"]]];
-            [tweet setSource:[TWParser client:tweetDictionary[@"target_object"][@"source"]]];
+            [tweet setSourceName:[TWParser client:tweetDictionary[@"target_object"][@"source"]]];
             [tweet setText:tweetDictionary[@"target_object"][@"text"]];
             [tweet setIsFavorited:YES];
             [tweet setFavUser:tweetDictionary[@"source"][@"screen_name"]];
-            [tweet setTextColor:@(CellTextColorGold)];
+            [tweet setTweetTextColor:@(CellTextColorGold)];
             
             //アイコン検索名
             [tweet setIconSearchPath:SEARCH_PATH];
@@ -164,7 +164,7 @@
             //RTした人
             [tweet setRtUserName:tweetDictionary[@"retweeted_status"][@"user"][@"screen_name"]];
             
-            [tweet setSource:[TWParser client:tweetDictionary[@"retweeted_status"][@"source"]]];
+            [tweet setSourceName:[TWParser client:tweetDictionary[@"retweeted_status"][@"source"]]];
             [tweet setCreatedAt:[TWParser JSTDate:tweetDictionary[@"retweeted_status"][@"created_at"]]];
             [tweet setRtUserName:tweetDictionary[@"user"][@"screen_name"]];
             [tweet setRtIconURL:[TWIconResizer iconURL:tweetDictionary[@"user"][@"profile_image_url"]
@@ -182,7 +182,7 @@
             
             [tweet setText:tweetDictionary[@"text"]];
             
-            [tweet setSource:[TWParser client:tweetDictionary[@"source"]]];
+            [tweet setSourceName:[TWParser client:tweetDictionary[@"source"]]];
             [tweet setCreatedAt:[TWParser JSTDate:tweetDictionary[@"created_at"]]];
             [tweet setEntities:[TWTweetEntities entitiesWithDictionary:tweetDictionary]];
         }
@@ -203,7 +203,7 @@
     return tweet;
 }
 
-+ (UIColor *)getTextColor:(CellTextColor)color {
++ (UIColor *)getTweetTextColor:(CellTextColor)color {
     
     if ( color == CellTextColorBlack ) return BLACK_COLOR;
     if ( color == CellTextColorRed )   return RED_COLOR;
@@ -222,35 +222,35 @@
     NSString *infoText = [NSString stringWithFormat:@"%@ - %@ [%@]",
                           self.screenName,
                           self.createdAt,
-                          self.source];
+                          self.sourceName];
     [self setInfoText:infoText];
     
     //Tweetの色を決定
     if ( [self isFavorited] ) {
         
-        [self setTextColor:CellTextColorGold];
+        [self setTweetTextColor:CellTextColorGold];
         
     } else {
         
         if ( [self isReTweet] ) {
             
-            [self setTextColor:CellTextColorGreen];
+            [self setTweetTextColor:CellTextColorGreen];
             
         } else {
             
             if ( [self isReply] ) {
                 
-                [self setTextColor:CellTextColorRed];
+                [self setTweetTextColor:CellTextColorRed];
                 
             } else {
                 
                 if ( [self isMyTweet] ) {
                     
-                    [self setTextColor:CellTextColorBlue];
+                    [self setTweetTextColor:CellTextColorBlue];
                     
                 } else {
                     
-                    [self setTextColor:CellTextColorBlack];
+                    [self setTweetTextColor:CellTextColorBlack];
                 }
             }
         }
@@ -261,7 +261,7 @@
     [mainText setFont:[UIFont systemFontOfSize:TWEET_TEXT_FONT_SIZE]];
                      range:NSMakeRange(0,
                                        [self.text length]);
-    [mainText setTextColor:[TWTweet getTextColor:self.textColor]];
+    [mainText setTextColor:[TWTweet getTweetTextColor:self.tweetTextColor]];
     [mainText setTextAlignment:kCTLeftTextAlignment
                  lineBreakMode:kCTLineBreakByCharWrapping
                  maxLineHeight:14.0f
@@ -274,7 +274,7 @@
     
     CGSize mainTextLabelSize = [mainText sizeConstrainedToSize:CGSizeMake(CELL_WIDHT,
                                                                           20000.0f)];
-    [self setCellHeight:mainTextLabelSize.height];
+    [self setTimelineCellHeight:mainTextLabelSize.height];
     
     CGSize menuTextLabelSize = [mainText sizeConstrainedToSize:CGSizeMake(210.0f,
                                                                           20000.0f)];

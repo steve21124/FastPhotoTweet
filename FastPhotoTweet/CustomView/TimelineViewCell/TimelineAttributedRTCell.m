@@ -9,7 +9,6 @@
 #import <QuartzCore/QuartzCore.h>
 #import "TimelineAttributedRTCell.h"
 #import "NSAttributedString+Attributes.h"
-#import "NSDictionary+DataExtraction.h"
 #import "Share.h"
 
 #define MIN_HEIGHT 31.0f
@@ -122,7 +121,7 @@
     NSString *userName = tweet.rtUserName;
     [self.iconView setTargetTweet:tweet];
     NSString *infoLabelText = tweet.infoText;
-    CGFloat contentsHeight = (self.timelineCellType == TimelineCellTypeMain) ? tweet.cellHeight : tweet.menuCellHeight;
+    CGFloat contentsHeight = (self.timelineCellType == TimelineCellTypeMain) ? tweet.timelineCellHeight : tweet.menuCellHeight;
     
     //セルへの反映開始
     [self.infoLabel setText:infoLabelText];
@@ -135,7 +134,7 @@
     if ( [[Share images] objectForKey:screenName] != nil &&
          self.iconView.layer.sublayers.count != 0 ) {
         
-        [self.userIconView setImage:[[Share images] imageForKey:screenName]];
+        [self.userIconView setImage:[[Share images] objectForKey:screenName]];
         
     } else {
         
@@ -145,7 +144,7 @@
     if ( [[Share images] objectForKey:userName] != nil &&
          self.iconView.layer.sublayers.count != 0 ) {
         
-        [self.rtUserIconView setImage:[[Share images] imageForKey:userName]];
+        [self.rtUserIconView setImage:[[Share images] objectForKey:userName]];
         
     } else {
         

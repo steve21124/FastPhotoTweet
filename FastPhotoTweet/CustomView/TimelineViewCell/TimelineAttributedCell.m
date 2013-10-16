@@ -9,7 +9,6 @@
 #import <QuartzCore/QuartzCore.h>
 #import "TimelineAttributedCell.h"
 #import "NSAttributedString+Attributes.h"
-#import "NSDictionary+DataExtraction.h"
 #import "NSString+Calculator.h"
 #import "Share.h"
 
@@ -102,7 +101,7 @@
     NSString *screenName = tweet.screenName;
     [self.iconView setTargetTweet:tweet];
     NSString *infoLabelText = tweet.infoText;
-    CGFloat contentsHeight = (self.timelineCellType == TimelineCellTypeMain) ? tweet.cellHeight : tweet.menuCellHeight;
+    CGFloat contentsHeight = (self.timelineCellType == TimelineCellTypeMain) ? tweet.timelineCellHeight : tweet.menuCellHeight;
     
     //ふぁぼられイベント用
     if ( tweet.favoriteEventeType == FavoriteEventTypeReceive ) {
@@ -120,7 +119,7 @@
     
     //セルへの反映開始
     [self.infoLabel setText:infoLabelText];
-    [self.infoLabel setTextColor:[TWTweet getTextColor:tweet.textColor]];
+    [self.infoLabel setTextColor:[TWTweet getTweetTextColor:tweet.tweetTextColor]];
     [self.mainLabel setAttributedText:tweet.attributedString];
     [self.mainLabel setFrame:CGRectMake(CGRectGetMinX(self.infoLabel.frame),
                                         CGRectGetMaxY(self.infoLabel.frame) + MARGIN,
@@ -129,7 +128,7 @@
     
     if ( [[Share images] objectForKey:screenName] != nil ) {
         
-        [self.iconView setImage:[[Share images] imageForKey:screenName]
+        [self.iconView setImage:[[Share images] objectForKey:screenName]
                        forState:UIControlStateNormal];
         
     } else {

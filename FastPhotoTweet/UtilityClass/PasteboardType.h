@@ -13,6 +13,6 @@
 
 + (int)check;
 + (BOOL)isText;
-+ (BOOL)isImage;
++ (BOOL)isImageData;
 
 @end

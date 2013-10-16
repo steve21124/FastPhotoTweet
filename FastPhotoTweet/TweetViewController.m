@@ -78,7 +78,7 @@
             
             //ツールバーにボタンをセット
             [_topBar setItems:TOP_BAR animated:NO];
-            [_bottomBar setItems:BOTTOM_BAR animated:NO];
+            [self.bottomToolBar setItems:BOTTOM_BAR animated:NO];
             
             _postText.text = BLANK;
         });
@@ -295,7 +295,7 @@
     int bottomBarY = SCREEN_HEIGHT - TAB_BAR_HEIGHT - TOOL_BAR_HEIGHT;
     
     //下部バーに位置と高さを設定する
-    _bottomBar.frame = CGRectMake(0,
+    self.bottomToolBar.frame = CGRectMake(0,
                                   bottomBarY,
                                   SCREEN_WIDTH,
                                   TOOL_BAR_HEIGHT);
@@ -459,7 +459,7 @@
     
     //NSLog(@"pushResendButton");
     
-    APP_DELEGATE.resendMode = YES;
+//    APP_DELEGATE.resendMode = YES;
     
     ResendViewController *dialog = [[[ResendViewController alloc] init] autorelease];
     dialog.modalTransitionStyle = UIModalTransitionStyleCoverVertical;
@@ -489,15 +489,15 @@
 
 - (IBAction)pushBrowserButton:(id)sender {
     
-    NSString *useragent = IPHONE_USERAGENT;
+    NSString *useragent = IPHONE_USER_AGENT;
     
     if ( [[USER_DEFAULTS objectForKey:@"UserAgent"] isEqualToString:@"FireFox"] ) {
         
-        useragent = FIREFOX_USERAGENT;
+        useragent = FIREFOX_USER_AGENT;
         
     } else if ( [[USER_DEFAULTS objectForKey:@"UserAgent"] isEqualToString:@"iPad"] ) {
         
-        useragent = IPAD_USERAFENT;
+        useragent = IPAD_USER_AGENT;
     }
     
     NSDictionary *dictionary = [[NSDictionary alloc] initWithObjectsAndKeys:useragent, @"UserAgent", nil];
@@ -801,22 +801,6 @@
     
     if ( showImageMode ) [self tapClearView:nil];
     
-    if ( APP_DELEGATE.browserOpenMode ) return;
-    
-    if ( APP_DELEGATE.willResignActive ) {
-        
-        NSLog(@"  willResignActive");
-        APP_DELEGATE.willResignActive = NO;
-        return;
-    }
-    
-    if ( APP_DELEGATE.pboardURLOpenTweet ) {
-        
-        NSLog(@"  pboardURLOpenTweet");
-        APP_DELEGATE.pboardURLOpenTweet = NO;
-        return;
-    }
-    
     if ( [EmptyCheck check:APP_DELEGATE.urlSchemeDownloadUrl] ) {
         
         NSLog(@"  urlSchemeDownloadUrl");
@@ -839,28 +823,9 @@
         [_postText becomeFirstResponder];
     }
     
-    NSLog(@"  showActionSheet: %@, showImagePicker: %@",
-          showActionSheet ? @"YES" : @"NO",
-          showImagePicker ? @"YES" : @"NO");
-    
-    if ( !showActionSheet && !showImagePicker ) {
-        
-        if ( APP_DELEGATE.launchMode == 2 ) {
-            
-            NSLog(@"  launchMode == 2");
-            [self showActionMenu];
-            
-        } else {
-            
-            if ( APP_DELEGATE.launchMode == 1 ) {
-                
-                NSLog(@"  launchMode == 1");
-                [self showActionMenu];
-            }
-        }
-    }
-    
-    APP_DELEGATE.launchMode = 2;
+//    NSLog(@"  showActionSheet: %@, showImagePicker: %@",
+//          showActionSheet ? @"YES" : @"NO",
+//          showImagePicker ? @"YES" : @"NO");
     
     [self countText];
 }
@@ -870,8 +835,7 @@
     NSLog(@"Tweet pboardNotification: %@", notification.userInfo);
     
     //Tweetタブを開いていない場合は終了
-    if ( APP_DELEGATE.tabBarController.selectedIndex != 0 ||
-         APP_DELEGATE.browserOpenMode ) return;
+    if ( APP_DELEGATE.tabBarController.selectedIndex != 0 ) return;
     
     APP_DELEGATE.startupUrlList = [NSArray arrayWithObject:[notification.userInfo objectForKey:@"pboardURL"]];
     [self pushBrowserButton:nil];
@@ -1190,26 +1154,7 @@
             
         } else if ( buttonIndex == 3 ) {
             
-            if ( pBoardType == 0 ) {
-                
-                if ( !APP_DELEGATE.browserOpenMode ) {
-                    
-                    APP_DELEGATE.startupUrlList = [NSArray arrayWithObject:[CreateSearchURL google:pboard.string]];
-                    
-                    [self pushBrowserButton:nil];
-                }
-            }
-            
         } else if ( buttonIndex == 4 ) {
-            
-            if ( !APP_DELEGATE.browserOpenMode ) {
-                
-                //NSLog(@"Open Browser");
-                
-                APP_DELEGATE.startupUrlList = [NSArray arrayWithObject:[USER_DEFAULTS objectForKey:@"HomePageURL"]];
-                
-                [self pushBrowserButton:nil];
-            }
             
         } else if ( buttonIndex == 5 ) {
             
@@ -1260,13 +1205,13 @@
                     [self.assets removeAllObjects];
                 }
                 
-                if ( !self.groups ) {
+                if ( !self.assetsGroups ) {
                     
-                    self.groups = [NSMutableArray array];
+                    self.assetsGroups = [NSMutableArray array];
                     
                 } else {
                     
-                    [self.groups removeAllObjects];
+                    [self.assetsGroups removeAllObjects];
                 }
                 
                 if ( !self.assetsLibrary ) {
@@ -1280,7 +1225,7 @@
                                                       
                                                       if ( assetsGroup ) {
                                                           
-                                                          [self.groups addObject:assetsGroup];
+                                                          [self.assetsGroups addObject:assetsGroup];
                                                           
                                                           ALAssetsGroupEnumerationResultsBlock resultBlock = ^(ALAsset *asset,
                                                                                                                NSUInteger index,
@@ -1310,7 +1255,7 @@
                                                               }
                                                           };
                                                           
-                                                          ALAssetsGroup *group = (ALAssetsGroup *)[self.groups objectAtIndex:0];
+                                                          ALAssetsGroup *group = (ALAssetsGroup *)[self.assetsGroups objectAtIndex:0];
                                                           [self.assets removeAllObjects];
                                                           
                                                           [group setAssetsFilter:[ALAssetsFilter allPhotos]];
@@ -1714,11 +1659,11 @@
         
         if ( [[USER_DEFAULTS objectForKey:@"PhotoService"] isEqualToString:@"img.ur"] ) {
             
-            URL = [NSURL URLWithString:@"http://api.imgur.com/2/upload.json"];
+            URL = [NSURL URLWithString:IMGUR_API_URL];
             
         } else if ( [[USER_DEFAULTS objectForKey:@"PhotoService"] isEqualToString:@"Twitpic"] ) {
             
-            URL = [NSURL URLWithString:@"http://api.twitpic.com/1/upload.json"];
+            URL = [NSURL URLWithString:TWITPIC_API_URL];
         }
         
         ASIFormDataRequest *request = [[[ASIFormDataRequest alloc] initWithURL:URL] autorelease];
@@ -1755,7 +1700,7 @@
                 
                 [USER_DEFAULTS setObject:@"img.ur" forKey:@"PhotoService"];
                 
-                [request setURL:[NSURL URLWithString:@"http://api.imgur.com/2/upload.json"]];
+                [request setURL:[NSURL URLWithString:IMGUR_API_URL]];
                 [request addPostValue:IMGUR_API_KEY forKey:@"key"];
                 [request addData:imageData forKey:@"image"];
                 
@@ -2034,11 +1979,11 @@
         
         if ( uploadType == 2 ) {
             
-            URL = [NSURL URLWithString:@"http://api.imgur.com/2/upload.json"];
+            URL = [NSURL URLWithString:IMGUR_API_URL];
             
         } else if ( uploadType == 3 ) {
             
-            URL = [NSURL URLWithString:@"http://api.twitpic.com/1/upload.json"];
+            URL = [NSURL URLWithString:TWITPIC_API_URL];
         }
         
         ASIFormDataRequest *request = [[[ASIFormDataRequest alloc] initWithURL:URL] autorelease];
@@ -2074,7 +2019,7 @@
             } else {
                 
                 //Twitpic投稿が不可な場合はimg.urに投稿
-                request.url = [NSURL URLWithString:@"http://api.imgur.com/2/upload.json"];
+                request.url = [NSURL URLWithString:IMGUR_API_URL];
                 
                 [USER_DEFAULTS setObject:@"img.ur" forKey:@"PhotoService"];
                 [request addPostValue:IMGUR_API_KEY forKey:@"key"];
@@ -2362,12 +2307,12 @@
     
     @try {
         
-        if ( APP_DELEGATE.resendMode ) {
-            
-            APP_DELEGATE.resendMode = NO;
-            _postText.text = [[TWTweets manager] text];
-            inReplyToId = [[TWTweets manager] inReplyToID];
-        }
+//        if ( APP_DELEGATE.resendMode ) {
+//            
+//            APP_DELEGATE.resendMode = NO;
+//            _postText.text = [[TWTweets manager] text];
+//            inReplyToId = [[TWTweets manager] inReplyToID];
+//        }
         
         //再投稿ボタンの有効･無効切り替え
         if ( [[[TWTweets manager] sendedTweets] count] == 0 ) {
@@ -2413,14 +2358,14 @@
             return;
         }
         
-        if ( APP_DELEGATE.pcUaMode ) {
-            
-            APP_DELEGATE.pcUaMode = NO;
-            
-            //開き直す
-            [self pushBrowserButton:nil];
-            return;
-        }
+//        if ( APP_DELEGATE.pcUaMode ) {
+//            
+//            APP_DELEGATE.pcUaMode = NO;
+//            
+//            //開き直す
+//            [self pushBrowserButton:nil];
+//            return;
+//        }
         
         if ( [EmptyCheck check:APP_DELEGATE.postText] ) {
             

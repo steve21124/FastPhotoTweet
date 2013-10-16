@@ -7,8 +7,6 @@
 
 #import "DeleteWhiteSpace.h"
 
-#define BLANK @""
-
 @implementation DeleteWhiteSpace
 
 //行頭、末尾の空白文字を削除

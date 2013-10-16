@@ -69,7 +69,7 @@
 - (void)setNotifications {
     
     [NOTIFICATION addObserver:self
-                     selector:@selector(addTask:)
+                     selector:@selector(addMessageTask:)
                          name:ADD_STATUS_BAR_TASK
                        object:nil];
     
@@ -141,9 +141,9 @@
     [self stopTimer:nil];
 }
 
-- (void)addTask:(NSNotification *)notification {
+- (void)addMessageTask:(NSNotification *)notification {
     
-    NSLog(@"addTask: %@", notification.userInfo);
+    NSLog(@"addMessageTask: %@", notification.userInfo);
     
     if( [notification.userInfo objectForKey:@"Task"] != nil ) {
         
@@ -177,48 +177,51 @@
     
     if ( task != nil ) {
         
-        _textLabel.text = task;
-        self.alpha = 1.0f;
-        
-        switch ( _animationType ) {
-                
-            case StatusBarInfoAnimationTypeTopInToFadeOut:
-                
-                self.frame = HIDE_POSITION;
-                
-                [UIView animateWithDuration:[_animationDuration floatValue]
-                                 animations:^{
-                                     
-                                     weakSelf.frame = SHOW_POSITION;
-                                 }
-                                 completion:^(BOOL finished) {
-                                     
-                                     [weakSelf hideTask];
-                                 }
-                 ];
-                
-                break;
-                
-            case StatusBarInfoAnimationTypeRightInLeftOut:
-                
-                self.frame = RIGHT_POSITION;
-                
-                [UIView animateWithDuration:[_animationDuration floatValue]
-                                 animations:^{
-                                     
-                                     weakSelf.frame = SHOW_POSITION;
-                                 }
-                                 completion:^(BOOL finished) {
-                                     
-                                     [weakSelf hideTask];
-                                 }
-                 ];
-                
-                break;
-                
-            default:
-                break;
-        }
+        dispatch_async(dispatch_get_main_queue(), ^{
+           
+            _textLabel.text = task;
+            self.alpha = 1.0f;
+            
+            switch ( _animationType ) {
+                    
+                case StatusBarInfoAnimationTypeTopInToFadeOut:
+                    
+                    self.frame = HIDE_POSITION;
+                    
+                    [UIView animateWithDuration:[_animationDuration floatValue]
+                                     animations:^{
+                                         
+                                         weakSelf.frame = SHOW_POSITION;
+                                     }
+                                     completion:^(BOOL finished) {
+                                         
+                                         [weakSelf hideTask];
+                                     }
+                     ];
+                    
+                    break;
+                    
+                case StatusBarInfoAnimationTypeRightInLeftOut:
+                    
+                    self.frame = RIGHT_POSITION;
+                    
+                    [UIView animateWithDuration:[_animationDuration floatValue]
+                                     animations:^{
+                                         
+                                         weakSelf.frame = SHOW_POSITION;
+                                     }
+                                     completion:^(BOOL finished) {
+                                         
+                                         [weakSelf hideTask];
+                                     }
+                     ];
+                    
+                    break;
+                    
+                default:
+                    break;
+            }
+        });
         
     } else {
         
@@ -235,58 +238,61 @@
     
     __block StatusBarInfo *weakSelf = self;
     
-    switch ( _animationType ) {
-            
-        case StatusBarInfoAnimationTypeTopInToFadeOut:
-            
-            [UIView animateWithDuration:[_animationDuration floatValue]
-                                  delay:[_showTime floatValue]
-                                options:0
-                             animations:^{
-                                 
-                                 weakSelf.alpha = 0.0f;
-                             }
-                             completion:^(BOOL finished) {
-                                 
-                                 weakSelf.frame = HIDE_POSITION;
-                                 weakSelf.alpha = 1.0f;
-                                 
-                                 DISPATCH_AFTER(0.1) ^{
+    dispatch_async(dispatch_get_main_queue(), ^{
+       
+        switch ( _animationType ) {
+                
+            case StatusBarInfoAnimationTypeTopInToFadeOut:
+                
+                [UIView animateWithDuration:[_animationDuration floatValue]
+                                      delay:[_showTime floatValue]
+                                    options:0
+                                 animations:^{
                                      
-                                     [weakSelf startTimer:nil];
-                                     [weakSelf setShowing:NO];
-                                 });
-                             }
-             ];
-            
-            break;
-            
-        case StatusBarInfoAnimationTypeRightInLeftOut:
-            
-            [UIView animateWithDuration:[_animationDuration floatValue]
-                                  delay:[_showTime floatValue]
-                                options:0
-                             animations:^{
-                                 
-                                 weakSelf.frame = LEFT_POSITION;
-                             }
-                             completion:^(BOOL finished) {
-                                 
-                                 weakSelf.frame = HIDE_POSITION;
-                                 
-                                 DISPATCH_AFTER(0.1) ^{
+                                     weakSelf.alpha = 0.0f;
+                                 }
+                                 completion:^(BOOL finished) {
                                      
-                                     [weakSelf startTimer:nil];
-                                     [weakSelf setShowing:NO];
-                                 });
-                             }
-             ];
-            
-            break;
-            
-        default:
-            break;
-    }
+                                     weakSelf.frame = HIDE_POSITION;
+                                     weakSelf.alpha = 1.0f;
+                                     
+                                     DISPATCH_AFTER(0.1) ^{
+                                         
+                                         [weakSelf startTimer:nil];
+                                         [weakSelf setShowing:NO];
+                                     });
+                                 }
+                 ];
+                
+                break;
+                
+            case StatusBarInfoAnimationTypeRightInLeftOut:
+                
+                [UIView animateWithDuration:[_animationDuration floatValue]
+                                      delay:[_showTime floatValue]
+                                    options:0
+                                 animations:^{
+                                     
+                                     weakSelf.frame = LEFT_POSITION;
+                                 }
+                                 completion:^(BOOL finished) {
+                                     
+                                     weakSelf.frame = HIDE_POSITION;
+                                     
+                                     DISPATCH_AFTER(0.1) ^{
+                                         
+                                         [weakSelf startTimer:nil];
+                                         [weakSelf setShowing:NO];
+                                     });
+                                 }
+                 ];
+                
+                break;
+                
+            default:
+                break;
+        }
+    });
 }
 
 #pragma mark - ClassMethod
@@ -311,12 +317,12 @@
     [NSNotificationCenter postNotificationCenterForName:STOP_WAIT_STATUS_BAR_TASK];
 }
 
-+ (void)addTask:(NSString *)task {
++ (void)addMessageTask:(NSString *)messageTask {
     
-    if ( task != nil ) {
+    if ( messageTask != nil ) {
         
         [NSNotificationCenter postNotificationCenterForName:ADD_STATUS_BAR_TASK
-                                               withUserInfo:@{@"Task" : task}];
+                                               withUserInfo:@{@"Task" : messageTask}];
     }
 }
 

@@ -66,7 +66,7 @@
 }
 
 @property (retain, nonatomic) ALAssetsLibrary *assetsLibrary;
-@property (retain, nonatomic) NSMutableArray *groups;
+@property (retain, nonatomic) NSMutableArray *assetsGroups;
 @property (retain, nonatomic) NSMutableArray *assets;
 
 @property (retain, nonatomic) UIImage *originalImage;
@@ -80,7 +80,7 @@
 @property (retain, nonatomic) IBOutlet UISwitch *pboardURLSwitch;
 @property (retain, nonatomic) IBOutlet UIImageView *imagePreview;
 @property (retain, nonatomic) IBOutlet UIToolbar *topBar;
-@property (retain, nonatomic) IBOutlet UIToolbar *bottomBar;
+@property (retain, nonatomic) IBOutlet UIToolbar *bottomToolBar;
 @property (retain, nonatomic) IBOutlet UIBarButtonItem *trashButton;
 @property (retain, nonatomic) IBOutlet UIBarButtonItem *postButton;
 @property (retain, nonatomic) IBOutlet UIBarButtonItem *imageSettingButton;

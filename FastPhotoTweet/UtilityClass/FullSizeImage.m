@@ -7,8 +7,6 @@
 
 #import "FullSizeImage.h"
 
-#define BLANK @""
-
 #define TWITTER_FULL_PATTERN @"https?://(mobile\\.)?twitter\\.com/[_a-zA-Z0-9]{1,15}/status/[0-9]+/photo/1"
 #define PIXIV_FULL_PATTERN @"https?://(www\\.)?(touch\\.)?pixiv\\.net/member_illust\\.php\\?(mode=(medium|big)|illust_id=[0-9]+)&(illust_id=[0-9]+|mode=(medium|big))"
 
@@ -58,6 +56,12 @@
             if ( results.count == 0 ) return urlString;
             
             urlString = [results objectForKey:@"url"];
+            
+        } else if ( [urlString hasPrefix:@"http://yfrog.com/"] ) {
+            
+            NSMutableString *tempURLString = [urlString replaceMutableWord:@"http://yfrog.com/" replacedWord:@"http://twitter.yfrog.com/"];
+            [tempURLString appendString:@"?sa=0"];
+            urlString = [[tempURLString copy] autorelease];
             
         } else if ( [urlString boolWithRegExp:TWITTER_FULL_PATTERN] ) {
             

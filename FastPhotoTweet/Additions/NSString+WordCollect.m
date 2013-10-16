@@ -43,6 +43,18 @@
     return [NSString stringWithString:[self deleteMutableWord:deleteWord]];
 }
 
+- (NSString *)deleteWords:(NSArray *)deleteWords {
+    
+    NSString *string = [NSString stringWithString:self];
+    
+    for (NSString *deleteWord in deleteWords) {
+        
+        string = [string deleteMutableWord:deleteWord];
+    }
+    
+    return [NSString stringWithString:string];
+}
+
 - (NSMutableString *)deleteMutableWord:(NSString *)deleteWord {
     
     NSMutableString *tempString = [NSMutableString stringWithString:self];
@@ -97,8 +109,8 @@
             [URLRanges count] != 0 ) {
             
             //URLがある
-            if ( charIndex >= currentRange.location &&
-                 charIndex < currentRange.location + currentRange.length ) {
+            if ( charIndex >= currentRange.location && //charIndexはlocation以上
+                 charIndex < currentRange.location + currentRange.length ) { //charIndexはlocation+length以下
                 
                 //URLの範囲内
                 [resultString appendString:currentChar];

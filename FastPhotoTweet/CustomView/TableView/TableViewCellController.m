@@ -8,6 +8,4 @@
 #import "TableViewCellController.h"
 
 @implementation TableViewCellController
-@synthesize cell;
-
 @end

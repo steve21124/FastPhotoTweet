@@ -53,7 +53,7 @@
     return result;
 }
 
-+ (BOOL)isImage {
++ (BOOL)isImageData {
     
     UIPasteboard *pboard = [UIPasteboard generalPasteboard];
     int i = 0;

@@ -12,8 +12,8 @@
 @property (nonatomic) CGFloat scale;
 
 @property (nonatomic, strong) NSValue *viewRect;
-@property (nonatomic) CGFloat topMargin;
-@property (nonatomic) CGFloat maxSize;
+@property (nonatomic) CGFloat baseViewTopMargin;
+@property (nonatomic) CGFloat imageMaxSize;
 @property (nonatomic) CGFloat receivedSize;
 
 @property (nonatomic) BOOL afterClose;
@@ -61,7 +61,7 @@
     return self;
 }
 
-- (void)loadImage:(NSString *)imageUrl viewRect:(CGRect)viewRect topMargin:(CGFloat)topMargin {
+- (void)loadImage:(NSString *)imageUrl viewRect:(CGRect)viewRect baseViewTopMargin:(CGFloat)baseViewTopMargin {
     
     if ( imageUrl == nil ||
         [imageUrl isEqualToString:@""] ) {
@@ -69,6 +69,9 @@
         [self hideWindow];
         
     } else {
+        
+        imageUrl = [imageUrl replaceWord:@"%2528" replacedWord:@"("];
+        imageUrl = [imageUrl replaceWord:@"%2529" replacedWord:@")"];
         
         [self setSaveStarted:NO];
         [self setImageUrl:nil];
@@ -92,14 +95,10 @@
                 
             } else {
                 
-                NSMutableString *mString = [NSMutableString stringWithString:imageUrl];
-                [mString replaceOccurrencesOfString:@"%2528" withString:@"(" options:0 range:NSMakeRange(0, mString.length)];
-                [mString replaceOccurrencesOfString:@"%2529" withString:@")" options:0 range:NSMakeRange(0, mString.length)];
-                
                 //通常の画像
-                [self setImageUrl:mString];
+                [self setImageUrl:imageUrl];
                 [self setViewRect:[NSValue valueWithCGRect:viewRect]];
-                [self setTopMargin:topMargin];
+                [self setBaseViewTopMargin:baseViewTopMargin];
                 [self showWindow];
             }
         }
@@ -111,7 +110,7 @@
     CGRect viewRect = [self.viewRect CGRectValue];
     
     self.frame = CGRectMake(CGRectGetWidth(viewRect) / 2.0f - 2.0f,
-                            (CGRectGetHeight(viewRect) / 2.0f - 2.0f) + self.topMargin,
+                            (CGRectGetHeight(viewRect) / 2.0f - 2.0f) + self.baseViewTopMargin,
                             2.0f,
                             2.0f);
     
@@ -119,7 +118,7 @@
                      animations:^ {
                          
                          self.frame = CGRectMake(5.0f,
-                                                 (CGRectGetHeight(viewRect) / 2.0f - 2.0f) + self.topMargin,
+                                                 (CGRectGetHeight(viewRect) / 2.0f - 2.0f) + self.baseViewTopMargin,
                                                  CGRectGetWidth(viewRect) - 10.0f,
                                                  2.0f);
                          
@@ -303,7 +302,7 @@
                      animations:^ {
                          
                          self.frame = CGRectMake(5.0f,
-                                                 (CGRectGetHeight(self.frame) / 2.0f + 2.0f) + self.topMargin,
+                                                 (CGRectGetHeight(self.frame) / 2.0f + 2.0f) + self.baseViewTopMargin,
                                                  CGRectGetWidth(self.frame),
                                                  2.0f);
                      }
@@ -313,7 +312,7 @@
                                           animations:^ {
                                               
                                               self.frame = CGRectMake(CGRectGetWidth(rect) / 2.0f + 2.0f,
-                                                                      (CGRectGetHeight(rect) / 2.0f + 2.0f) + self.topMargin,
+                                                                      (CGRectGetHeight(rect) / 2.0f + 2.0f) + self.baseViewTopMargin,
                                                                       2.0f,
                                                                       2.0f);
                                           }
@@ -358,7 +357,7 @@
 
 - (void)reloadProgressBar {
     
-    [self.progressBar setProgress:(_receivedSize / _maxSize)];
+    [self.progressBar setProgress:(_receivedSize / _imageMaxSize)];
 }
 
 - (void)connection:(NSURLConnection *)connection didReceiveResponse:(NSURLResponse *)response {
@@ -368,10 +367,10 @@
     _imageName = response.suggestedFilename;
     [_imageName retain];
     
-    _maxSize = [response expectedContentLength];
+    _imageMaxSize = [response expectedContentLength];
 	_receivedSize = 0.0f;
     
-    NSLog(@"FileSize: %.0f", _maxSize);
+    NSLog(@"FileSize: %.0f", _imageMaxSize);
     
     [self.progressBar setProgress:_receivedSize];
 }
@@ -402,7 +401,7 @@
 - (void)connectionDidFinishLoading:(NSURLConnection *)connection {
     
     NSLog(@"connectionDidFinishLoading");
-    NSLog(@"receiveData.length: %d, maxSize: %.0f", self.receivedData.length, _maxSize);
+    NSLog(@"receiveData.length: %d, maxSize: %.0f", self.receivedData.length, _imageMaxSize);
     
     if ( self.receivedData.length != 34 ) {
         

@@ -76,12 +76,12 @@ typedef enum {
 @property (nonatomic, strong) UIBarButtonItem *countLabel;
 @property (nonatomic, strong) UIImageView *previewImageView;
 @property (nonatomic, strong) ActivityGrayView *grayView;
-@property (nonatomic, strong) UIToolbar *bottomBar;
+@property (nonatomic, strong) UIToolbar *bottomToolBar;
 
 @property (nonatomic, strong) CheckAppVersion *checker;
 
 @property (nonatomic, strong) ALAssetsLibrary *assetsLibrary;
-@property (nonatomic, strong) NSMutableArray *groups;
+@property (nonatomic, strong) NSMutableArray *assetsGroups;
 @property (nonatomic, strong) NSMutableArray *assets;
 
 @property (nonatomic, copy) NSString *inReplyToID;
@@ -113,6 +113,7 @@ typedef enum {
 - (void)pboardNotification:(NSNotification *)notification;
 - (void)openImageSource:(NSInteger)buttonIndex;
 - (void)parseImageUploadResponse:(ASIHTTPRequest *)request;
+- (void)openTohaSearch:(NSString *)searchText;
 
 - (NSString *)nowPlayingText;
 - (void)saveArtworkURL:(NSString *)URL;
@@ -217,7 +218,7 @@ typedef enum {
                                                        [view setEnabled:NO];
                                                    }
                                                    
-                                                   for ( UIBarButtonItem *view in self.bottomBar.items ) {
+                                                   for ( UIBarButtonItem *view in self.bottomToolBar.items ) {
                                                        
                                                        [view setEnabled:NO];
                                                    }
@@ -367,12 +368,12 @@ typedef enum {
      ]];
     
     //ツールバー下
-    UIToolbar *bottomBar = [[UIToolbar alloc] initWithFrame:CGRectMake(0.0f,
+    UIToolbar *bottomToolBar = [[UIToolbar alloc] initWithFrame:CGRectMake(0.0f,
                                                                        SCREEN_HEIGHT - TAB_BAR_HEIGHT - TOOL_BAR_HEIGHT,
                                                                        SCREEN_WIDTH,
                                                                        TOOL_BAR_HEIGHT)];
-    [bottomBar setTintColor:OCEAN_COLOR];
-    [self setBottomBar:bottomBar];
+    [bottomToolBar setTintColor:OCEAN_COLOR];
+    [self setBottomToolBar:bottomToolBar];
     
     //設定
     UIBarButtonItem *settingsButton = [[UIBarButtonItem alloc] initWithImage:[UIImage imageNamed:@"setting.png"]
@@ -397,7 +398,7 @@ typedef enum {
                                                                      style:UIBarButtonItemStylePlain
                                                                     target:self
                                                                     action:@selector(pushActionButton)];
-    [self.bottomBar setItems:@[
+    [self.bottomToolBar setItems:@[
      settingsButton,
      flexibleSpace,
      browserButton,
@@ -537,7 +538,7 @@ typedef enum {
     [bottomView addSubview:previewImageView];
     [self.view addSubview:topBar];
     [self.view addSubview:middleBar];
-    [self.view addSubview:bottomBar];
+    [self.view addSubview:bottomToolBar];
     [self.view addSubview:grayView];
 }
 
@@ -713,7 +714,7 @@ typedef enum {
         if ( [[USER_DEFAULTS dictionaryForKey:@"Information"] valueForKey:APP_VERSION] == 0 ) {
             
             [ShowAlert title:[NSString stringWithFormat:@"FastPhotoTweet %@", APP_VERSION]
-                     message:@"・Tweet表示の高さ計算を修正\n・Tweet表示の高速化\n・NowPlaying用画像アップロード先の修正\n・細かな修正"];
+                     message:@"・URLの処理を改善\n・アラート関係の問題を修正"];
             
             information = [[NSMutableDictionary alloc] initWithDictionary:[USER_DEFAULTS dictionaryForKey:@"Information"]];
             [information setValue:[NSNumber numberWithInt:1] forKey:APP_VERSION];
@@ -1151,39 +1152,39 @@ typedef enum {
             
             if ( [[USER_DEFAULTS objectForKey:@"PhotoService"] isEqualToString:@"img.ur"] ) {
                 
-                URL = [NSURL URLWithString:@"http://api.imgur.com/2/upload.json"];
+                URL = [NSURL URLWithString:IMGUR_API_URL];
                 
             } else if ( [[USER_DEFAULTS objectForKey:@"PhotoService"] isEqualToString:@"Twitpic"] ) {
                 
-                URL = [NSURL URLWithString:@"http://api.twitpic.com/1/upload.json"];
+                URL = [NSURL URLWithString:TWITPIC_API_URL];
                 
             } else {
                 
-                URL = [NSURL URLWithString:@"http://api.imgur.com/2/upload.json"];
+                URL = [NSURL URLWithString:IMGUR_API_URL];
             }
             
         } else if ( uploadType == 2 ) {
             
-            URL = [NSURL URLWithString:@"http://api.imgur.com/2/upload.json"];
+            URL = [NSURL URLWithString:IMGUR_API_URL];
             
         } else if ( uploadType == 3 ) {
             
-            URL = [NSURL URLWithString:@"http://api.twitpic.com/1/upload.json"];
+            URL = [NSURL URLWithString:TWITPIC_API_URL];
             
         } else {
             
-            URL = [NSURL URLWithString:@"http://api.imgur.com/2/upload.json"];
+            URL = [NSURL URLWithString:IMGUR_API_URL];
         }
         
     } else {
      
         if ( [[USER_DEFAULTS objectForKey:@"PhotoService"] isEqualToString:@"img.ur"] ) {
             
-            URL = [NSURL URLWithString:@"http://api.imgur.com/2/upload.json"];
+            URL = [NSURL URLWithString:IMGUR_API_URL];
             
         } else if ( [[USER_DEFAULTS objectForKey:@"PhotoService"] isEqualToString:@"Twitpic"] ) {
             
-            URL = [NSURL URLWithString:@"http://api.twitpic.com/1/upload.json"];
+            URL = [NSURL URLWithString:TWITPIC_API_URL];
         }
     }
     
@@ -1194,14 +1195,14 @@ typedef enum {
     
     ASIFormDataRequest *request = [[ASIFormDataRequest alloc] initWithURL:URL];
     
-    if ( [URL.absoluteString isEqualToString:@"http://api.imgur.com/2/upload.json"] ) {
+    if ( [URL.absoluteString isEqualToString:IMGUR_API_URL] ) {
         
         //NSLog(@"img.ur upload");
         
         [request addPostValue:IMGUR_API_KEY forKey:@"key"];
         [request addData:imageData forKey:@"image"];
 
-    } else if ( [URL.absoluteString isEqualToString:@"http://api.twitpic.com/1/upload.json"] ) {
+    } else if ( [URL.absoluteString isEqualToString:TWITPIC_API_URL] ) {
         
         //NSLog(@"Twitpic upload");
         
@@ -1225,7 +1226,7 @@ typedef enum {
             
             [USER_DEFAULTS setObject:@"img.ur" forKey:@"PhotoService"];
             
-            [request setURL:[NSURL URLWithString:@"http://api.imgur.com/2/upload.json"]];
+            [request setURL:[NSURL URLWithString:IMGUR_API_URL]];
             [request addPostValue:IMGUR_API_KEY forKey:@"key"];
             [request addData:imageData forKey:@"image"];
             
@@ -1257,6 +1258,13 @@ typedef enum {
             }
             
             [self.textView becomeFirstResponder];
+            
+            NSNumber *cursorToTop = userInfo[@"CursorToTop"];
+            if ( cursorToTop &&
+                [cursorToTop boolValue] ) {
+                
+                [self.textView setSelectedRange:NSMakeRange(0, 0)];
+            }
         }
         
         NSString *inReplyToID = userInfo[@"InReplyToID"];
@@ -1336,13 +1344,13 @@ typedef enum {
                 [self.assets removeAllObjects];
             }
             
-            if ( !self.groups ) {
+            if ( !self.assetsGroups ) {
                 
-                self.groups = [NSMutableArray array];
+                self.assetsGroups = [NSMutableArray array];
                 
             } else {
                 
-                [self.groups removeAllObjects];
+                [self.assetsGroups removeAllObjects];
             }
             
             if ( !self.assetsLibrary ) {
@@ -1356,7 +1364,7 @@ typedef enum {
                                                   
                                                   if ( assetsGroup ) {
                                                       
-                                                      [self.groups addObject:assetsGroup];
+                                                      [self.assetsGroups addObject:assetsGroup];
                                                       
                                                       ALAssetsGroupEnumerationResultsBlock resultBlock = ^(ALAsset *asset,
                                                                                                            NSUInteger index,
@@ -1390,7 +1398,7 @@ typedef enum {
                                                           }
                                                       };
                                                       
-                                                      ALAssetsGroup *group = (ALAssetsGroup *)[self.groups objectAtIndex:0];
+                                                      ALAssetsGroup *group = (ALAssetsGroup *)[self.assetsGroups objectAtIndex:0];
                                                       [self.assets removeAllObjects];
                                                       
                                                       [group setAssetsFilter:[ALAssetsFilter allPhotos]];
@@ -1416,11 +1424,11 @@ typedef enum {
         
         NSString *imageURL = nil;
         
-        if ( [request.url.absoluteString isEqualToString:@"http://api.imgur.com/2/upload.json"] ) {
+        if ( [request.url.absoluteString isEqualToString:IMGUR_API_URL] ) {
             
             imageURL = [[[result objectForKey:@"upload"] objectForKey:@"links"] objectForKey:@"original"];
             
-        } else if ( [request.url.absoluteString isEqualToString:@"http://api.twitpic.com/1/upload.json"] ) {
+        } else if ( [request.url.absoluteString isEqualToString:TWITPIC_API_URL] ) {
             
             imageURL = [result objectForKey:@"url"];
         }
@@ -1471,6 +1479,18 @@ typedef enum {
         }
     }
 }
+
+- (void)openTohaSearch:(NSString *)searchText {
+    
+    if ( searchText ) {
+        
+        NSString *URL = [CreateSearchURL google:[searchText substringWithRange:NSMakeRange(0,
+                                                                                           [searchText length] - 2)]];
+        [self pushBrowserButton:URL];
+    }
+}
+
+#pragma mark - ASIHTTPRequest
 
 - (void)requestFinished:(ASIHTTPRequest *)request {
 
@@ -1822,6 +1842,13 @@ typedef enum {
                     }
                 }
                 
+                //とは検索機能ONかつ条件にマッチ
+                if ( [USER_DEFAULTS boolForKey:@"TohaSearch"] &&
+                     [text boolWithRegExp:@".+とは$"] ) {
+                    
+                    [self openTohaSearch:text];
+                }
+                
                 [self.textView setText:@""];
                 [self.previewImageView setImage:nil];
                 [self countText];
@@ -1867,15 +1894,15 @@ typedef enum {
 
 - (void)pushBrowserButton:(id)URLStringOrSender {
     
-    NSString *useragent = IPHONE_USERAGENT;
+    NSString *useragent = IPHONE_USER_AGENT;
     
     if ( [[USER_DEFAULTS objectForKey:@"UserAgent"] isEqualToString:@"FireFox"] ) {
         
-        useragent = FIREFOX_USERAGENT;
+        useragent = FIREFOX_USER_AGENT;
         
     } else if ( [[USER_DEFAULTS objectForKey:@"UserAgent"] isEqualToString:@"iPad"] ) {
         
-        useragent = IPAD_USERAFENT;
+        useragent = IPAD_USER_AGENT;
     }
     
     NSDictionary *dictionary = [[NSDictionary alloc] initWithObjectsAndKeys:useragent, @"UserAgent", nil];

@@ -14,7 +14,6 @@
 #import "NSString+WordCollect.h"
 
 #define DATE_FORMAT @"HH:mm:ss"
-#define BLANK @""
 #define OFFSET 64800
 
 @implementation TWParser

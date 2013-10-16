@@ -5,6 +5,7 @@
 #import "TWTweetUtility.h"
 #import "TWParser.h"
 #import "NSString+Calculator.h"
+#import "NSString+RegularExpression.h"
 
 @implementation TWTweetUtility
 
@@ -74,6 +75,16 @@
         } else {
             
             expandedURL = url[@"media_url_https"];
+        }
+        
+        if ( [expandedURL boolWithRegExp:@"https?://p(bs)?\\.twimg\\.com/(media/)?[-_\\.a-zA-Z0-9]+(:large)?"] ) {
+            
+            if ( ![expandedURL hasSuffix:@":large"] ) {
+             
+                NSMutableString *mutableExpandedURL = [[expandedURL mutableCopy] autorelease];
+                [mutableExpandedURL appendString:@":large"];
+                expandedURL = [[mutableExpandedURL copy] autorelease];
+            }
         }
         
         [replacedText replaceOccurrencesOfString:tcoURL

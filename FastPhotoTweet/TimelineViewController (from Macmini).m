@@ -9,6 +9,7 @@
 //////// ARC ENABLED ////////
 /////////////////////////////
 
+#import <QuartzCore/CALayer.h>
 #import <Twitter/Twitter.h>
 #import <Accounts/Accounts.h>
 #import <Social/Social.h>
@@ -28,6 +29,7 @@
 
 #import "UIView+Positioning.h"
 #import "UIView+RectInitialize.h"
+#import "NSDictionary+DataExtraction.h"
 #import "NSArray+AppendUtil.h"
 #import "NSObject+EmptyCheck.h"
 #import "NSDictionary+XPath.h"
@@ -38,13 +40,13 @@
 #import "TWTwitterHeader.h"
 #import "TWTweets.h"
 #import "ListViewController.h"
-#import "SwipeShiftTextField.h"
+#import "IconButton.h"
+#import "SSTextField.h"
 #import "TWTweetUtility.h"
 #import "ActivityGrayView.h"
 #import "ImageWindow.h"
 #import "TimelineMenu.h"
 #import "InputAlertView.h"
-#import "CheckAppVersion.h"
 
 #define OCEAN_COLOR [UIColor colorWithRed:0.4 green:0.8 blue:1.0 alpha:1.0]
 
@@ -57,20 +59,8 @@
 #define PICKER_BAR_ITEM @[self.pickerBarCancelButton, self.flexibleSpace, self.pickerBarDoneButton]
 #define TOP_BAR_ITEM_DEFAULT @[self.actionButton, self.flexibleSpace, self.topBarUSButton, self.flexibleSpace, self.topBarIcon, self.flexibleSpace, self.topBarReloadButton, self.flexibleSpace, self.composeButton]
 #define TOP_BAR_ITEM_OTHER @[self.flexibleSpace, self.closeButton]
-#define TOP_BAR_ITEM_SEARCH @[self.actionButton, self.flexibleSpace, self.closeButton]
 
 #define CELL_WIDTH 264.0f
-
-typedef enum {
-    TweetsTypeNone,
-    TweetsTypeHomeTimeline,
-    TweetsTypeMentions,
-    TweetsTypeFavorites,
-    TweetsTypeList,
-    TweetsTypeSearch,
-    TweetsTypeUserTimeline,
-    TweetsTypeInReplyTo
-}TweetsType;
 
 typedef enum {
     TimelineSegmentTimeline,
@@ -121,9 +111,10 @@ typedef enum {
 
 @property (strong, nonatomic) UITableView *timeline;
 @property (strong, nonatomic) TimelineMenu *timelineMenu;
+@property (strong, nonatomic) UIToolbar *bottomBar;
 
-//@property (strong, nonatomic) UIAlertView *searchAlert;
-//@property (strong, nonatomic) SwipeShiftTextField *searchAlertTextField;
+@property (strong, nonatomic) UIAlertView *searchAlert;
+@property (strong, nonatomic) SSTextField *searchAlertTextField;
 
 @property (strong, nonatomic) UIView *pickerBase;
 @property (strong, nonatomic) UIToolbar *pickerBar;
@@ -137,15 +128,13 @@ typedef enum {
 
 @property (strong, nonatomic) NSURLConnection *connection;
 @property (strong, atomic) NSMutableArray *currentTweets;
-@property (copy, nonatomic) NSString *currentSearchWord;
 @property (strong, nonatomic) TWTweet *selectedTweet;
+@property (nonatomic) BOOL loading;
 @property (nonatomic) BOOL userStream;
-@property (nonatomic) BOOL searchStream;
 @property (nonatomic) BOOL webBrowserMode;
 @property (nonatomic) BOOL addTweetStopMode;
 @property (nonatomic) BOOL listSelect;
 @property (nonatomic) NSUInteger longPressControl;
-@property (nonatomic) TweetsType tweetsType;
 
 @property (strong, nonatomic) NSMutableArray *userStreamQueue;
 @property (strong, nonatomic) NSTimer *userStreamTimer;
@@ -158,7 +147,6 @@ typedef enum {
 - (oneway void)requestHomeTimeline;
 - (oneway void)requestMentions;
 - (oneway void)requestFavorites;
-- (oneway void)requestSearch:(NSString *)searchWord;
 - (oneway void)requestTweet:(NSString *)tweetID;
 - (oneway void)requestList:(NSString *)listID;
 - (void)createInReplyToChain:(TWTweet *)tweet;
@@ -200,15 +188,8 @@ typedef enum {
 - (oneway void)userStreamReceiveFavEvent:(TWTweet *)receiveTweet;
 - (oneway void)userStreamReceiveTweet:(TWTweet *)receiveTweet;
 
-- (void)openSearchStream:(NSString *)searchWord;
-- (void)closeSearchStream;
-- (void)startSearchStreamQueue;
-- (void)stopSearchStreamQueue;
-- (oneway void)checkSearchStreamQueue;
-- (oneway void)searchStreamReceiveTweet:(TWTweet *)receiveTweet;
-
-- (void)getIconWithTweetArray:(NSMutableArray *)tweetArray;
-- (void)requestProfileImageWithURL:(NSString *)biggerUrl screenName:(NSString *)screenName searchName:(NSString *)searchName;
+- (oneway void)getIconWithTweetArray:(NSMutableArray *)tweetArray;
+- (oneway void)requestProfileImageWithURL:(NSString *)biggerUrl screenName:(NSString *)screenName searchName:(NSString *)searchName;
 - (void)refreshTimelineCell:(NSNumber *)index;
 - (void)openTimelineImage:(NSNotification *)notification;
 - (void)swipeTimelineRight:(UISwipeGestureRecognizer *)sender;
@@ -232,7 +213,6 @@ typedef enum {
 - (void)createSearchAlert:(NSString *)title alertType:(TextFieldType)alertType;
 - (void)getMyAccountIcon;
 - (void)setOtherTweetsMode;
-- (void)setSearchTweetsMode;
 
 - (void)showAPILimit;
 - (void)showListView;
@@ -262,8 +242,7 @@ typedef enum {
         
         [Share manager];
         
-        [self setCurrentTweets:[NSMutableArray array]];
-        [self setTweetsType:TweetsTypeNone];
+        self.currentTweets = [NSMutableArray array];
         
         //アイコン保存用ディレクトリ確認
         BOOL isDir = NO;
@@ -418,7 +397,7 @@ typedef enum {
         
         if ( [TWAccounts accountCount] != 0 ) {
          
-            DISPATCH_AFTER(0.3) ^{
+            DISPATCH_AFTER(0.5) ^{
                
                 [self requestHomeTimeline];
             });
@@ -434,12 +413,12 @@ typedef enum {
     
     if ( self.listSelect ) {
         
-        if ( [[[TWTweets manager] listID] isNotEmpty] ) {
+        if ( [[TWTweets listID] isNotEmpty] ) {
             
-            if ( ![[[TWTweets manager] listID] isEqualToString:[[TWTweets manager] showingListID]] ) {
+            if ( ![[TWTweets listID] isEqualToString:[TWTweets showingListID]] ) {
              
-                [TWTweets manager].showingListID = [[TWTweets manager] listID];
-                [self requestList:[[TWTweets manager] listID]];
+                [TWTweets manager].showingListID = [TWTweets listID];
+                [self requestList:[TWTweets listID]];
             }
         }
     }
@@ -449,7 +428,7 @@ typedef enum {
     
     NSLog(@"%s", __func__);
     
-    if ( [USER_DEFAULTS boolForKey:@"BecomeActiveUSConnect"] &&
+    if ( [D boolForKey:@"BecomeActiveUSConnect"] &&
          self.segment.selectedSegmentIndex == 0 &&
          !self.addTweetStopMode &&
          !self.userStream ) {
@@ -462,11 +441,10 @@ typedef enum {
     
     NSLog(@"%s", __func__);
     
-    if ( [USER_DEFAULTS boolForKey:@"EnterBackgroundUSDisConnect"] &&
-         (self.userStream || self.searchStream )) {
+    if ( [D boolForKey:@"EnterBackgroundUSDisConnect"] &&
+         self.userStream) {
         
         [self closeStream];
-        [self closeSearchStream];
     }
 }
 
@@ -643,9 +621,9 @@ typedef enum {
     
     [self getMyAccountIcon];
     
-    if ( [USER_DEFAULTS boolForKey:@"UseTimelineList"] ) {
+    if ( [D boolForKey:@"UseTimelineList"] ) {
         
-        NSString *listID = [[USER_DEFAULTS objectForKey:@"TimelineList"] objectForKey:[TWAccounts currentAccountName]];
+        NSString *listID = [[D objectForKey:@"TimelineList"] objectForKey:[TWAccounts currentAccountName]];
         
         if ( [listID isNotEmpty] ) {
             
@@ -660,7 +638,7 @@ typedef enum {
     NSMutableDictionary *parameters = [@{} mutableCopy];
     
     //取得数
-    [parameters setObject:[USER_DEFAULTS objectForKey:@"TimelineLoadCount"]
+    [parameters setObject:[[NSUserDefaults standardUserDefaults] objectForKey:@"TimelineLoadCount"]
                    forKey:@"count"];
     //エンティティの有効化
     [parameters setObject:@"1"
@@ -675,7 +653,6 @@ typedef enum {
                         forKey:@"since_id"];
     }
     
-    [self setTweetsType:TweetsTypeHomeTimeline];
     [FPTRequest requestWithGetType:FPTGetRequestTypeHomeTimeline
                         parameters:parameters];
 }
@@ -695,7 +672,7 @@ typedef enum {
     [parameters setObject:screenName
                    forKey:@"screen_name"];
     //取得数
-    [parameters setObject:[USER_DEFAULTS objectForKey:@"TimelineLoadCount"]
+    [parameters setObject:[[NSUserDefaults standardUserDefaults] objectForKey:@"TimelineLoadCount"]
                    forKey:@"count"];
     //エンティティの有効化
     [parameters setObject:@"1"
@@ -704,7 +681,6 @@ typedef enum {
     [parameters setObject:@"1"
                    forKey:@"include_rts"];
     
-    [self setTweetsType:TweetsTypeUserTimeline];
     [FPTRequest requestWithGetType:FPTGetRequestTypeUserTimeline
                         parameters:parameters];
 }
@@ -721,13 +697,12 @@ typedef enum {
     NSMutableDictionary *parameters = [@{} mutableCopy];
     
     //取得数
-    [parameters setObject:[USER_DEFAULTS objectForKey:@"MentionsLoadCount"]
+    [parameters setObject:[[NSUserDefaults standardUserDefaults] objectForKey:@"MentionsLoadCount"]
                    forKey:@"count"];
     //エンティティの有効化
     [parameters setObject:@"1"
                    forKey:@"include_entities"];
     
-    [self setTweetsType:TweetsTypeMentions];
     [FPTRequest requestWithGetType:FPTGetRequestTypeMentions
                         parameters:parameters];
 }
@@ -744,13 +719,12 @@ typedef enum {
     NSMutableDictionary *parameters = [@{} mutableCopy];
     
     //取得数
-    [parameters setObject:[USER_DEFAULTS objectForKey:@"FavoritesLoadCount"]
+    [parameters setObject:[[NSUserDefaults standardUserDefaults] objectForKey:@"FavoritesLoadCount"]
                    forKey:@"count"];
     //エンティティの有効化
     [parameters setObject:@"1"
                    forKey:@"include_entities"];
     
-    [self setTweetsType:TweetsTypeFavorites];
     [FPTRequest requestWithGetType:FPTGetRequestTypeFavorites
                         parameters:parameters];
 }
@@ -764,15 +738,13 @@ typedef enum {
     
     [self.grayView start];
     
-    [self setCurrentSearchWord:searchWord];
-    
     NSMutableDictionary *parameters = [@{} mutableCopy];
     
     //サーチワード
     [parameters setObject:searchWord
                    forKey:@"q"];
     //取得数
-    [parameters setObject:[USER_DEFAULTS objectForKey:@"TimelineLoadCount"]
+    [parameters setObject:[[NSUserDefaults standardUserDefaults] objectForKey:@"TimelineLoadCount"]
                forKey:@"count"];
     //エンティティの有効化
     [parameters setObject:@"1"
@@ -781,7 +753,6 @@ typedef enum {
     [parameters setObject:@"ja"
                    forKey:@"lang"];
     
-    [self setTweetsType:TweetsTypeSearch];
     [FPTRequest requestWithGetType:FPTGetRequestTypeSearch
                         parameters:parameters];
 }
@@ -825,7 +796,7 @@ typedef enum {
     NSMutableDictionary *parameters = [@{} mutableCopy];
     
     //取得数
-    [parameters setObject:[USER_DEFAULTS objectForKey:@"TimelineLoadCount"]
+    [parameters setObject:[[NSUserDefaults standardUserDefaults] objectForKey:@"TimelineLoadCount"]
                    forKey:@"count"];
     
     //エンティティの有効化
@@ -835,18 +806,13 @@ typedef enum {
     [parameters setObject:listID
                    forKey:LIST_ID];
     
-    if ( [USER_DEFAULTS boolForKey:@"UseTimelineList"] &&
+    if ( [D boolForKey:@"UseTimelineList"] &&
           self.segment.selectedSegmentIndex == TimelineSegmentTimeline ) {
         
         [parameters setObject:@"YES"
                        forKey:TIMELINE_LIST_MODE];
-        [self setTweetsType:TweetsTypeHomeTimeline];
-        
-    } else {
-        
-        [self setTweetsType:TweetsTypeList];
     }
-
+    
     [FPTRequest requestWithGetType:FPTGetRequestTypeList
                         parameters:parameters];
 }
@@ -855,11 +821,6 @@ typedef enum {
 - (oneway void)receiveHomeTimeline:(NSNotification *)notification {
     
     NSLog(@"%s", __func__);
-    
-    if ( self.tweetsType != TweetsTypeHomeTimeline ) {
-        
-        return;
-    }
     
     NSString *requestUserName = notification.userInfo[REQUEST_USER_NAME];
     
@@ -885,32 +846,33 @@ typedef enum {
         
         NSUInteger beforeCount = [self.currentTweets count];
         
-        [self setCurrentTweets:[self.currentTweets appendOnlyNewTweetToTop:receiveTweets
-                                                             returnMutable:YES]];
+//        @synchronized(self) {
+        
+            [self setCurrentTweets:[self.currentTweets appendOnlyNewTweetToTop:receiveTweets
+                                                                 returnMutable:YES]];
+//        }
+        
         [self.grayView end];
         [self.refreshControl endRefreshing];
         
         if ( beforeCount != [self.currentTweets count] ) {
             
-            //新着があった場合のみ行う
-            [TWTweets saveCurrentTimeline:self.currentTweets];
+//            @synchronized(self) {
+            
+                //新着があった場合のみ行う
+                [TWTweets saveCurrentTimeline:self.currentTweets];
+//            }
             
             [self.timeline reloadData];
             
-            if ( [USER_DEFAULTS boolForKey:@"TimelineFirstLoad"] ) {
-              
-                if ( beforeCount == 0 ) {
+            if ( [D boolForKey:@"TimelineFirstLoad"] ) {
                 
-                    [self scrollTimelineToBottom:YES];
-                }
-            
+                [self scrollTimelineToBottom:YES];
+                
             } else {
                 
-                if ( self.timeline.contentOffset.y <= 0.0f ) {
-                 
-                    //新着取得前の最新までスクロール
-                    [self scrollTimelineForNewTweet:scrollTweetID];
-                }
+                //新着取得前の最新までスクロール
+                [self scrollTimelineForNewTweet:scrollTweetID];
             }
             
             [self addTaskNotification:[NSString stringWithFormat:@"新着Tweet %d件", [self.currentTweets count] - beforeCount]];
@@ -920,7 +882,7 @@ typedef enum {
             [self addTaskNotification:@"新着Tweetなし"];
         }
         
-        if ( [USER_DEFAULTS boolForKey:@"ReloadAfterUSConnect"] &&
+        if ( [D boolForKey:@"ReloadAfterUSConnect"] &&
             !self.userStream ) {
             
             //UserStream接続
@@ -938,16 +900,11 @@ typedef enum {
     
     NSLog(@"%s", __func__);
     
-    if ( self.tweetsType != TweetsTypeUserTimeline ) {
-        
-        return;
-    }
+    [self setOtherTweetsMode];
     
     NSString *requestUserName = notification.userInfo[REQUEST_USER_NAME];
     
     if ( [requestUserName isEqualToString:[TWAccounts currentAccountName]] ) {
-    
-        [self setOtherTweetsMode];
         
         NSMutableArray *receiveTweets = notification.userInfo[RESPONSE_DATA];
         [self getIconWithTweetArray:receiveTweets];
@@ -962,11 +919,6 @@ typedef enum {
     
     NSLog(@"%s", __func__);
     
-    if ( self.tweetsType != TweetsTypeMentions ) {
-        
-        return;
-    }
-    
     NSString *requestUserName = notification.userInfo[REQUEST_USER_NAME];
     
     if ( self.segment.selectedSegmentIndex == TimelineSegmentMentions &&
@@ -975,7 +927,6 @@ typedef enum {
         NSMutableArray *receiveTweets = notification.userInfo[RESPONSE_DATA];
         [self getIconWithTweetArray:receiveTweets];
         [self setCurrentTweets:receiveTweets];
-        [TWTweets saveCurrentMentions:receiveTweets];
         [self.timeline reloadData];
         [self.grayView end];
         [self.refreshControl endRefreshing];
@@ -986,11 +937,6 @@ typedef enum {
     
     NSLog(@"%s", __func__);
     
-    if ( self.tweetsType != TweetsTypeFavorites ) {
-        
-        return;
-    }
-    
     NSString *requestUserName = notification.userInfo[REQUEST_USER_NAME];
     
     if ( self.segment.selectedSegmentIndex == TimelineSegmentFavorites &&
@@ -999,7 +945,6 @@ typedef enum {
         NSMutableArray *receiveTweets = notification.userInfo[RESPONSE_DATA];
         [self getIconWithTweetArray:receiveTweets];
         [self setCurrentTweets:receiveTweets];
-        [TWTweets saveCurrentFavorites:receiveTweets];
         [self.timeline reloadData];
         [self.grayView end];
         [self.refreshControl endRefreshing];
@@ -1010,16 +955,11 @@ typedef enum {
     
     NSLog(@"%s", __func__);
     
-    if ( self.tweetsType != TweetsTypeSearch ) {
-        
-        return;
-    }
-    
     NSString *requestUserName = notification.userInfo[REQUEST_USER_NAME];
     
     if ( [requestUserName isEqualToString:[TWAccounts currentAccountName]] ) {
         
-        [self setSearchTweetsMode];
+        [self setOtherTweetsMode];
         
         NSMutableArray *receiveTweets = notification.userInfo[RESPONSE_DATA];
         [self getIconWithTweetArray:receiveTweets];
@@ -1027,12 +967,6 @@ typedef enum {
         [self.timeline reloadData];
         [self.grayView end];
         [self.refreshControl endRefreshing];
-        
-        if ( self.searchStream ) {
-            
-            NSString *searchWord = notification.userInfo[@"SearchWord"];
-            [self openSearchStream:searchWord];
-        }
     }
 }
 
@@ -1044,11 +978,6 @@ typedef enum {
 }
 
 - (oneway void)receiveList:(NSNotification *)notification {
-    
-    if ( self.tweetsType != TweetsTypeList ) {
-        
-        return;
-    }
     
     NSString *requestUserName = notification.userInfo[REQUEST_USER_NAME];
     
@@ -1068,83 +997,65 @@ typedef enum {
     
     NSLog(@"%s", __func__);
     
-    NSString *myAccountName = [TWAccounts currentAccountName];
-    NSString *requestUserName = notification.userInfo[REQUEST_USER_NAME];
-    if ( [requestUserName isEqualToString:myAccountName] ) {
-     
-        IconSize iconSize;
-        NSString *iconQualitySetting = [USER_DEFAULTS objectForKey:@"IconQuality"];
+    IconSize iconSize;
+    NSString *iconQualitySetting = [D objectForKey:@"IconQuality"];
+    
+    if ( [iconQualitySetting isEqualToString:@"Mini"] ) {
+        iconSize = IconSizeMini;
+    }else if ( [iconQualitySetting isEqualToString:@"Normal"] ) {
+        iconSize = IconSizeNormal;
+    }else if ( [iconQualitySetting isEqualToString:@"Bigger"] ) {
+        iconSize = IconSizeBigger;
+    }else if ( [iconQualitySetting hasPrefix:@"Original"] ) {
+        iconSize = IconSizeOriginal;
+    } else {
+        iconSize = IconSizeBigger;
+    }
+    
+    NSString *iconURL = [TWIconResizer iconURL:notification.userInfo[@"ResponseData"][@"profile_image_url"]
+                                      iconSize:iconSize];
+    ASIHTTPRequest *request = [ASIHTTPRequest requestWithURL:[NSURL URLWithString:iconURL]];
+    __weak __block ASIHTTPRequest *wRequest = request;
+    
+    [wRequest setCompletionBlock:^ {
         
-        if ( [iconQualitySetting isEqualToString:@"Mini"] ) {
-            iconSize = IconSizeMini;
-        } else if ( [iconQualitySetting isEqualToString:@"Normal"] ) {
-            iconSize = IconSizeNormal;
-        } else if ( [iconQualitySetting isEqualToString:@"Bigger"] ) {
-            iconSize = IconSizeBigger;
-        } else if ( [iconQualitySetting hasPrefix:@"Original"] ) {
-            iconSize = IconSizeOriginal;
-        } else {
-            iconSize = IconSizeBigger;
+        NSArray *iconList = [FILE_MANAGER contentsOfDirectoryAtPath:ICONS_DIRECTORY
+                                                              error:nil];
+        NSString *myAccountName = [TWAccounts currentAccountName];
+        
+        for ( NSString *accountName in iconList ) {
+            
+            if ( [accountName hasPrefix:myAccountName] ) {
+                
+                NSString *searchName = [NSString stringWithFormat:@"%@", accountName];
+                [FILE_MANAGER removeItemAtPath:FILE_PATH
+                                         error:nil];
+                break;
+            }
         }
         
-        NSString *iconURL = [TWIconResizer iconURL:notification.userInfo[@"ResponseData"][@"profile_image_url"]
-                                          iconSize:iconSize];
-        ASIHTTPRequest *request = [ASIHTTPRequest requestWithURL:[NSURL URLWithString:iconURL]];
-        __weak __block ASIHTTPRequest *wRequest = request;
+        UIImage *iconImage = [UIImage imageWithDataByContext:wRequest.responseData];
         
-        [wRequest setCompletionBlock:^ {
+        if ( [iconQualitySetting isEqualToString:@"Original96"] ) {
             
-            NSArray *iconList = [FILE_MANAGER contentsOfDirectoryAtPath:ICONS_DIRECTORY
-                                                                  error:nil];
-            
-            for ( NSString *accountName in iconList ) {
-                
-                if ( [accountName hasPrefix:myAccountName] ) {
-                    
-                    NSString *searchName = [NSString stringWithFormat:@"%@", accountName];
-                    [FILE_MANAGER removeItemAtPath:FILE_PATH
-                                             error:nil];
-                    break;
-                }
-            }
-            
-            UIImage *iconImage = [UIImage imageWithDataByContext:wRequest.responseData];
-            NSData *saveData = nil;
-            if ( [iconQualitySetting isEqualToString:@"Original96"] ) {
-                
-                iconImage = [ResizeImage aspectResizeForMaxSize:iconImage
-                                                        maxSize:96.0f];
-                
-                NSString *extension = [wRequest.url.absoluteString pathExtension];
-                if ( [extension isEqualToString:@"png"] ) {
-                    
-                    saveData = [EncodeImage png:iconImage];
-                    
-                } else {
-                    
-                    saveData = [EncodeImage jpg:iconImage];
-                }
-                
-            } else {
-                
-                saveData = wRequest.responseData;
-            }
-            
-            [ICON_BUTTON setImage:iconImage
-                         forState:UIControlStateNormal];
-            
-            NSString *fileName = [iconURL lastPathComponent];
-            NSString *screenName = notification.userInfo[REQUEST_USER_NAME];
-            NSString *searchName = [NSString stringWithFormat:@"%@-%@", screenName, fileName];
-            [saveData writeToFile:FILE_PATH
-                       atomically:YES];
-            [Share cacheImage:iconImage
-                      forName:screenName
-             doneNotification:NO];
-        }];
+            iconImage = [ResizeImage aspectResizeForMaxSize:iconImage
+                                                    maxSize:96.0f];
+        }
         
-        [wRequest startAsynchronous];
-    }
+        [ICON_BUTTON setImage:iconImage
+                     forState:UIControlStateNormal];
+        
+        NSString *fileName = [iconURL lastPathComponent];
+        NSString *screenName = notification.userInfo[REQUEST_USER_NAME];
+        NSString *searchName = [NSString stringWithFormat:@"%@-%@", screenName, fileName];
+        [wRequest.responseData writeToFile:FILE_PATH
+                                atomically:YES];
+        [Share cacheImage:iconImage
+                  forName:screenName
+         doneNotification:NO];
+    }];
+    
+    [wRequest startAsynchronous];
 }
 
 - (oneway void)receiveAPIError:(NSNotification *)notification {
@@ -1172,15 +1083,13 @@ typedef enum {
     }
     
     [self.grayView forceEnd];
-    [ActivityIndicator off];
     [self.refreshControl endRefreshing];
 }
 
 - (oneway void)receiveOffline:(NSNotification *)notification {
     
-    [self.grayView forceEnd];
     [ActivityIndicator off];
-    [self.refreshControl endRefreshing];
+    [self.grayView forceEnd];
 }
 
 - (void)createInReplyToChain:(TWTweet *)tweet {
@@ -1252,19 +1161,7 @@ typedef enum {
 
 - (void)refreshOccured:(id)sender {
     
-    if ( self.tweetsType == TweetsTypeUserTimeline ||
-         self.tweetsType == TweetsTypeSearch ||
-         self.tweetsType == TweetsTypeInReplyTo ||
-         self.tweetsType == TweetsTypeList ) {
-        
-        [self.refreshControl endRefreshing];
-        return;
-    }
-    
-    if ( !self.searchStream ) {
-     
-        [self pushReloadButton];
-    }
+    [self pushReloadButton];
 }
 
 #pragma mark - Account Change
@@ -1280,9 +1177,6 @@ typedef enum {
     [self getMyAccountIcon];
     
     //List一覧のキャッシュを削除
-    [[TWTweets manager] setAllLists:@[]];
-    [[TWTweets manager] setListID:@""];
-    [[TWTweets manager] setShowingListID:@""];
     
     //タイムラインをアクティブアカウントの物に切り替え
     [self setCurrentTweets:[TWTweets currentTimeline]];
@@ -1299,35 +1193,17 @@ typedef enum {
     
     NSLog(@"%s", __func__);
     
-    if ( self.tweetsType == TweetsTypeSearch ) {
-        
-        NSString *searchURL = [NSString stringWithFormat:@"https://twitter.com/search?q=%@", [CreateSearchURL encodeWord:self.currentSearchWord
-                                                                                                                encoding:kCFStringEncodingUTF8]];
-        NSString *text = [NSString stringWithFormat:@"\"Twitter / 検索 - %@\" %@ ", self.currentSearchWord, searchURL];
-        NSNotification *notification = [NSNotification notificationWithName:@"SetTweetViewText"
-                                                                     object:nil
-                                                                   userInfo:@{@"Text":text}];
-        [[NSNotificationCenter defaultCenter] postNotification:notification];
-        
-        dispatch_async(dispatch_get_main_queue(), ^{
-            
-            self.tabBarController.selectedIndex = 0;
-        });
-        
-    } else {
-     
-        UIActionSheet *sheet = [[UIActionSheet alloc]
-                                initWithTitle:@"外部サービスやユーザー情報を開く"
-                                delegate:self
-                                cancelButtonTitle:@"Cancel"
-                                destructiveButtonTitle:nil
-                                otherButtonTitles:
-                                @"Twilog", @"TwilogSearch", @"favstar", @"Twitpic",
-                                @"UserTimeline", @"TwitterSearch", @"TwitterSearch(Stream)",
-                                @"API Limitを確認", nil];
-        [sheet setTag:ActionMenuTypeService];
-        [sheet showInView:self.tabBarController.view];
-    }
+    UIActionSheet *sheet = [[UIActionSheet alloc]
+                            initWithTitle:@"外部サービスやユーザー情報を開く"
+                            delegate:self
+                            cancelButtonTitle:@"Cancel"
+                            destructiveButtonTitle:nil
+                            otherButtonTitles:
+                            @"Twilog", @"TwilogSearch", @"favstar", @"Twitpic",
+                            @"UserTimeline", @"TwitterSearch", @"TwitterSearch(Stream)",
+                            @"API Limitを確認", nil];
+    [sheet setTag:ActionMenuTypeService];
+    [sheet showInView:self.tabBarController.view];
 }
 
 - (void)pushTopBarUSButton {
@@ -1409,14 +1285,7 @@ typedef enum {
 
 - (void)pushCloseButton {
     
-    if ( self.searchStream ) {
-        
-        [self closeSearchStream];
-    }
-    
     [self setDefaultTweetsMode];
-    [self setCurrentSearchWord:@""];
-    [self setTweetsType:TweetsTypeHomeTimeline];
     [self.segment setSelectedSegmentIndex:TimelineSegmentTimeline];
     [USER_STREAM_BUTTON setEnabled:YES];
     [self setCurrentTweets:[TWTweets currentTimeline]];
@@ -1438,88 +1307,87 @@ typedef enum {
             [self createSearchAlert:@"Twilog"
                           alertType:TextFieldTypeTwilog];
             
-        } else if ( buttonIndex == TextFieldTypeTwilogSearch ) {
+        }else if ( buttonIndex == TextFieldTypeTwilogSearch ) {
             
-            InputAlertView *inputAlert = [[InputAlertView alloc] initWithTitle:@"TwilogSearch"
-                                                                       message:@""
-                                                                      delegate:self
-                                                             cancelButtonTitle:@"キャンセル"
-                                                                 okButtonTitle:@"確定"
-                                                                    inputStyle:InputAlertViewStyleDouble];
-            [inputAlert setTag:TextFieldTypeTwilogSearch];
-            [inputAlert setTopTextFieldText:@"" placeholder:@"ScreenName"];
-            [inputAlert setBottomTextFieldText:@"" placeholder:@"SearchWord"];
-            [inputAlert show];
+            InputAlertView *alert = [[InputAlertView alloc] initWithTitle:@"TwilogSearch"
+                                                                 delegate:self
+                                                        cancelButtonTitle:@"キャンセル"
+                                                          doneButtonTitle:@"確定"
+                                                        isMultiInputField:YES
+                                                               doneAction:@selector(openTwilogSearch:searchWord:)];
+            [alert.multiTextFieldTop setPlaceholder:@"ScreenName"];
+            [alert.multiTextFieldBottom setPlaceholder:@"SearchWord"];
+            [alert show];
             
-        } else if ( buttonIndex == TextFieldTypeFavStar ) {
+        }else if ( buttonIndex == TextFieldTypeFavStar ) {
             
             [self createSearchAlert:@"favstar"
                           alertType:TextFieldTypeFavStar];
             
-        } else if ( buttonIndex == TextFieldTypeTwitPic ) {
+        }else if ( buttonIndex == TextFieldTypeTwitPic ) {
             
             [self createSearchAlert:@"TwitPic"
                           alertType:TextFieldTypeTwitPic];
             
-        } else if ( buttonIndex == TextFieldTypeUserTimeline ) {
+        }else if ( buttonIndex == TextFieldTypeUserTimeline ) {
             
             [self createSearchAlert:@"UserTimeline"
                           alertType:TextFieldTypeUserTimeline];
             
-        } else if ( buttonIndex == TextFieldTypeSearch ) {
+        }else if ( buttonIndex == TextFieldTypeSearch ) {
             
             [self createSearchAlert:@"TwitterSearch"
                           alertType:TextFieldTypeSearch];
             
-        } else if ( buttonIndex == TextFieldTypeSearchStream ) {
+        }else if ( buttonIndex == TextFieldTypeSearchStream ) {
             
             [self createSearchAlert:@"SearchStream"
                           alertType:TextFieldTypeSearchStream];
             
-        } else if ( buttonIndex == 7 ) {
+        }else if ( buttonIndex == 7 ) {
             
             [ActivityIndicator on];
             [self showAPILimit];
         }
         
-    } else if ( tag == ActionMenuTypeMyService ) {
+    }else if ( tag == ActionMenuTypeMyService ) {
         
         if ( buttonIndex == TextFieldTypeTwilog ) {
             
             [self openTwilog:[TWAccounts currentAccountName]];
             
-        } else if ( buttonIndex == TextFieldTypeTwilogSearch ) {
+        }else if ( buttonIndex == TextFieldTypeTwilogSearch ) {
             
-            InputAlertView *inputAlert = [[InputAlertView alloc] initWithTitle:@"TwilogSearch"
-                                                                       message:@""
-                                                                      delegate:self
-                                                             cancelButtonTitle:@"キャンセル"
-                                                                 okButtonTitle:@"確定"
-                                                                    inputStyle:InputAlertViewStyleDouble];
-            [inputAlert setTag:TextFieldTypeTwilogSearch];
-            [inputAlert setTopTextFieldText:[TWAccounts currentAccountName] placeholder:@"ScreenName"];
-            [inputAlert setBottomTextFieldText:@"" placeholder:@"SearchWord"];
-            [inputAlert show];
-            [[inputAlert bottomTextField] becomeFirstResponder];
+            InputAlertView *alert = [[InputAlertView alloc] initWithTitle:@"TwilogSearch"
+                                                                 delegate:self
+                                                        cancelButtonTitle:@"キャンセル"
+                                                          doneButtonTitle:@"確定"
+                                                        isMultiInputField:YES
+                                                               doneAction:@selector(openTwilogSearch:searchWord:)];
+            [alert.multiTextFieldTop setPlaceholder:@"ScreenName"];
+            [alert.multiTextFieldTop setText:[TWAccounts currentAccountName]];
+            [alert.multiTextFieldBottom setPlaceholder:@"SearchWord"];
+            [alert show];
+            [alert.multiTextFieldBottom becomeFirstResponder];
             
-        } else if ( buttonIndex == TextFieldTypeFavStar ) {
+        }else if ( buttonIndex == TextFieldTypeFavStar ) {
             
             [self openFavStar:[TWAccounts currentAccountName]];
             
-        } else if ( buttonIndex == TextFieldTypeTwitPic ) {
+        }else if ( buttonIndex == TextFieldTypeTwitPic ) {
             
             [self openTwitPic:[TWAccounts currentAccountName]];
             
-        } else if ( buttonIndex == TextFieldTypeUserTimeline ) {
+        }else if ( buttonIndex == TextFieldTypeUserTimeline ) {
             
             [self requestUserTimeline:[TWAccounts currentAccountName]];
             
-        } else if ( buttonIndex == TextFieldTypeSearch ) {
+        }else if ( buttonIndex == TextFieldTypeSearch ) {
             
             [self requestSearch:[TWAccounts currentAccountName]];
         }
     
-    } else if ( tag == ActionMenuTypeTimelineLongPress ) {
+    }else if ( tag == ActionMenuTypeTimelineLongPress ) {
         
         [self setLongPressControl:0];
         
@@ -1527,26 +1395,19 @@ typedef enum {
             
             [self closeStream];
             [self.currentTweets removeAllObjects];
-            [self setTweetsType:TweetsTypeNone];
             [self setCurrentTweets:nil];
             [self setCurrentTweets:BLANK_M_ARRAY];
             [TWTweets saveCurrentTimeline:self.currentTweets];
             
             if ( buttonIndex == 0 ) {
                 
-            } else if ( buttonIndex == 1 || buttonIndex == 2 ) {
+            }else if ( buttonIndex == 1 || buttonIndex == 2 ) {
                 
                 //各アカウントのログを削除
                 for ( ACAccount *account in [TWAccounts twitterAccounts] ) {
                     
-                    [[[TWTweets manager] timelines] setObject:[NSMutableArray array]
-                                                       forKey:account.username];
-                    
-                    [[[TWTweets manager] mentions] setObject:[NSMutableArray array]
-                                                       forKey:account.username];
-                    
-                    [[[TWTweets manager] favotites] setObject:[NSMutableArray array]
-                                                       forKey:account.username];
+                    [[TWTweets timelines] setObject:[NSMutableArray array]
+                                             forKey:account.username];
                 }
                 
                 [[Share images] removeAllObjects];
@@ -1573,7 +1434,7 @@ typedef enum {
             
             [self.timeline reloadData];
             
-        } else if ( buttonIndex == 3 ) {
+        }else if ( buttonIndex == 3 ) {
             
             //NG情報を再適用
             
@@ -1605,100 +1466,115 @@ typedef enum {
 #pragma mark - AlertView
 - (void)alertView:(UIAlertView *)alertView clickedButtonAtIndex:(NSInteger)buttonIndex {
     
-    if ( buttonIndex != alertView.cancelButtonIndex ) {
+    if ( buttonIndex == 1 ) {
         
         NSInteger tag = alertView.tag;
-        NSString *inputText = [[alertView textFieldAtIndex:0] text];
+        NSString *inputText = self.searchAlertTextField.text;
         
-        if ( tag == TextFieldTypeTwilog ) {
+        if ( [inputText isNotEmpty] ) {
             
-            [self openTwilog:inputText];
-            
-        } else if ( tag == TextFieldTypeTwilogSearch ) {
-            
-            if ( [alertView isKindOfClass:[InputAlertView class]] ) {
-                
-                InputAlertView *inputAlert = (InputAlertView *)alertView;
-                if ( inputAlert.alertViewStyle == InputAlertViewStyleSingle ||
-                     inputAlert.alertViewStyle == InputAlertViewStyleSingleSecure ) {
-            
-                    if ( [inputAlert.topTextFieldText isEmpty] ) {
-                        
-                        [ShowAlert error:@"検索対象のScreenNameを入力してください"];
-                        return;
-                    }
+            switch ( tag ) {
                     
-                } else if ( inputAlert.alertViewStyle == InputAlertViewStyleDouble ||
-                            inputAlert.alertViewStyle == InputAlertViewStyleDoubleSecure ) {
-            
-                    if ( [inputAlert.bottomTextFieldText isEmpty] ) {
-                        
-                        [ShowAlert error:@"検索ワードを入力してください"];
-                        return;
-                    }
-                }
-                
-                NSString *word = [[alertView textFieldAtIndex:1] text];
-                [self openTwilogSearch:inputText searchWord:word];
+                case TextFieldTypeTwilog:
+                    
+                    [self openTwilog:inputText];
+                    break;
+                    
+                case TextFieldTypeTwilogSearch:
+                    
+                    [ShowAlert error:@"未実装"];
+                    break;
+                    
+                case TextFieldTypeFavStar:
+                    
+                    [self openFavStar:inputText];
+                    break;
+                    
+                case TextFieldTypeTwitPic:
+                    
+                    [self openTwitPic:inputText];
+                    break;
+                    
+                case TextFieldTypeUserTimeline:
+                    
+                    [self requestUserTimeline:inputText];
+                    break;
+                    
+                case TextFieldTypeSearch:
+                    
+                    [self requestSearch:inputText];
+                    break;
+                    
+                case TextFieldTypeSearchStream:
+                    
+                    [ShowAlert error:@"未実装"];
+                    break;
+                    
+                default:
+                    break;
             }
-            
-        } else if ( tag == TextFieldTypeFavStar ) {
-            
-            [self openFavStar:inputText];
-            
-        } else if ( tag == TextFieldTypeTwitPic ) {
-            
-            [self openTwitPic:inputText];
-            
-        } else if ( tag == TextFieldTypeUserTimeline ) {
-            
-            [self requestUserTimeline:inputText];
-            
-        } else if ( tag == TextFieldTypeSearch ) {
-            
-            [self requestSearch:inputText];
-            
-        } else if ( tag == TextFieldTypeSearchStream ) {
-            
-            [self closeStream];
-            [self setSearchStream:YES];
-            [self requestSearch:inputText];
         }
     }
+    
+    [self.searchAlertTextField resignFirstResponder];
+    [self setSearchAlert:nil];
+    [self setSearchAlertTextField:nil];
 }
 
 #pragma mark - TextField
-- (BOOL)textFieldShouldReturn:(UITextField *)sender {
+- (BOOL)textFieldShouldReturn:(SSTextField *)sender {
     
-    if ( [sender.superview isKindOfClass:[InputAlertView class]] ) {
+    NSInteger tag = sender.tag;
+    NSString *inputText = self.searchAlertTextField.text;
+    
+    if ( [inputText isNotEmpty] ) {
         
-        InputAlertView *inputAlert = (InputAlertView *)sender.superview;
-        if ( inputAlert.alertViewStyle == InputAlertViewStyleSingle ||
-             inputAlert.alertViewStyle == InputAlertViewStyleSingleSecure ) {
-            
-        } else if ( inputAlert.alertViewStyle == InputAlertViewStyleDouble ||
-                    inputAlert.alertViewStyle == InputAlertViewStyleDoubleSecure ) {
-            
-            if ( inputAlert.bottomTextField == sender ) {
+        switch ( tag ) {
                 
-                if ( [inputAlert.topTextFieldText isEmpty] ) {
-                    
-                    [ShowAlert error:@"検索対象のScreenNameを入力してください"];
-                    return NO;
-                }
+            case TextFieldTypeTwilog:
                 
-                if ( [inputAlert.bottomTextFieldText isEmpty] ) {
-                    
-                    [ShowAlert error:@"検索ワードを入力してください"];
-                    return NO;
-                }
-            }
-            
-            [self alertView:inputAlert clickedButtonAtIndex:1];
-            [inputAlert dismissWithClickedButtonIndex:1
-                                             animated:YES];
+                [self openTwilog:inputText];
+                break;
+                
+            case TextFieldTypeTwilogSearch:
+                
+                break;
+                
+            case TextFieldTypeFavStar:
+                
+                [self openFavStar:inputText];
+                break;
+                
+            case TextFieldTypeTwitPic:
+                
+                [self openTwitPic:inputText];
+                break;
+                
+            case TextFieldTypeUserTimeline:
+                
+                [self requestUserTimeline:inputText];
+                break;
+                
+            case TextFieldTypeSearch:
+                
+                [self requestSearch:inputText];
+                break;
+                
+            case TextFieldTypeSearchStream:
+                
+                [ShowAlert error:@"未実装"];
+                break;
+                
+            default:
+                break;
         }
     }
+    
+    [sender resignFirstResponder];
+    [self.searchAlert dismissWithClickedButtonIndex:0
+                                           animated:YES];
+    [self setSearchAlert:nil];
+    [self setSearchAlertTextField:nil];
     
     return YES;
 }
@@ -1747,7 +1623,6 @@ typedef enum {
     
             [self setListSelect:NO];
             [self setAddTweetStopMode:NO];
-            [self setTweetsType:TweetsTypeHomeTimeline];
             [self setCurrentTweets:[TWTweets currentTimeline]];
             [self.timeline reloadData];
             
@@ -1761,9 +1636,6 @@ typedef enum {
             
             [self setListSelect:NO];
             [self setAddTweetStopMode:YES];
-            [self setTweetsType:TweetsTypeMentions];
-            [self setCurrentTweets:[TWTweets currentMentions]];
-            [self.timeline reloadData];
             [self requestMentions];
             break;
             
@@ -1771,9 +1643,6 @@ typedef enum {
             
             [self setListSelect:NO];
             [self setAddTweetStopMode:YES];
-            [self setTweetsType:TweetsTypeFavorites];
-            [self setCurrentTweets:[TWTweets currentFavorites]];
-            [self.timeline reloadData];
             [self requestFavorites];
             break;
         
@@ -1781,7 +1650,6 @@ typedef enum {
             
             [self setListSelect:YES];
             [self setAddTweetStopMode:YES];
-            [self setTweetsType:TweetsTypeList];
             [self showListView];
             break;
             
@@ -1799,7 +1667,7 @@ typedef enum {
         
         NSLog(@"%s", __func__);
         
-        if ( [USER_DEFAULTS boolForKey:@"USNoAutoLock"] ) [[UIApplication sharedApplication] setIdleTimerDisabled:YES];
+        if ( [D boolForKey:@"USNoAutoLock"] ) [[UIApplication sharedApplication] setIdleTimerDisabled:YES];
         
         //UserStream接続リクエストの作成
         SLRequest *request = [SLRequest requestForServiceType:SLServiceTypeTwitter
@@ -1830,44 +1698,34 @@ typedef enum {
 
 - (void)closeStream {
     
-    if ( [USER_DEFAULTS boolForKey:@"USNoAutoLock"] ) [[UIApplication sharedApplication] setIdleTimerDisabled:NO];
+    if ( [D boolForKey:@"USNoAutoLock"] ) [[UIApplication sharedApplication] setIdleTimerDisabled:NO];
     
     [self setUserStream:NO];
     [self.connection cancel];
     [self setConnection:nil];
     [self stopUserStreamQueue];
     
-    dispatch_async(dispatch_get_main_queue(), ^{
-       
-        [USER_STREAM_BUTTON setImage:[UIImage imageNamed:@"play.png"]
-                            forState:UIControlStateNormal];
-        [USER_STREAM_BUTTON setEnabled:YES];
-    });
+    [USER_STREAM_BUTTON setImage:[UIImage imageNamed:@"play.png"]
+                        forState:UIControlStateNormal];
+    [USER_STREAM_BUTTON setEnabled:YES];
 }
 
 - (void)reOpenStream {
     
-    if ( self.searchStream ) {
-        
-        [self closeSearchStream];
-        
-    } else {
+    [self closeStream];
+    
+    NSLog(@"%s", __func__);
+    
+    DISPATCH_AFTER(10.0) ^{
      
-        [self closeStream];
+        NSLog(@"Connection ReStart");
         
-        NSLog(@"%s", __func__);
-        
-        DISPATCH_AFTER(10.0) ^{
+        if ( [InternetConnection enable] ) {
             
-            NSLog(@"Connection ReStart");
-            
-            if ( [InternetConnection enable] ) {
-                
-                [self addTaskNotification:@"Timeline再読み込み"];
-                [self pushReloadButton];
-            }
-        });
-    }
+            [self addTaskNotification:@"UserStream再接続"];
+            [self pushTopBarUSButton];
+        }
+    });
 }
 
 - (void)startUserStreamQueue {
@@ -1967,10 +1825,7 @@ typedef enum {
         NSInteger index = 0;
         for ( TWTweet *tweet in self.currentTweets ) {
             
-            if ( [tweet.tweetID isEqualToString:unFavedTweetID] &&
-                 tweet.isFavorited &&
-                 !tweet.eventType &&
-                 !tweet.isReTweet ) {
+            if ( [tweet.tweetID isEqualToString:unFavedTweetID] ) {
                 
                 TWTweet *favedTweet = tweet;
                 [favedTweet setIsFavorited:NO];
@@ -2059,115 +1914,6 @@ typedef enum {
     }
 }
 
-#pragma mark - SearchStream
-
-- (void)openSearchStream:(NSString *)searchWord {
-    
-    [self closeStream];
-    
-    dispatch_queue_t userStreamQueue = GLOBAL_QUEUE_BACKGROUND;
-    dispatch_async(userStreamQueue, ^{
-        
-        NSLog(@"%s", __func__);
-        
-        if ( [USER_DEFAULTS boolForKey:@"USNoAutoLock"] ) [[UIApplication sharedApplication] setIdleTimerDisabled:YES];
-        
-        SLRequest *request = [SLRequest requestForServiceType:SLServiceTypeTwitter
-                                                requestMethod:TWRequestMethodPOST
-                                                          URL:[NSURL URLWithString:@"https://stream.twitter.com/1.1/statuses/filter.json"]
-                                                   parameters:@{@"track" : searchWord}];
-        
-        //アカウントの設定
-        [request setAccount:[TWAccounts currentAccount]];
-        
-        [self startSearchStreamQueue];
-        
-        //接続開始
-        self.connection = [NSURLConnection connectionWithRequest:request.preparedURLRequest
-                                                        delegate:self];
-        [self.connection start];
-        
-        // 終わるまでループさせる
-        while ( self.searchStream ) {
-            
-            [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode
-                                     beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.1]];
-        }
-        
-        request = nil;
-    });
-}
-
-- (void)closeSearchStream {
-    
-    NSLog(@"%s", __func__);
-    
-    if ( [USER_DEFAULTS boolForKey:@"USNoAutoLock"] ) [[UIApplication sharedApplication] setIdleTimerDisabled:NO];
-    
-    [self setSearchStream:NO];
-    [self.connection cancel];
-    [self setConnection:nil];
-    [self stopSearchStreamQueue];
-}
-
-- (void)startSearchStreamQueue {
-    
-    NSLog(@"%s", __func__);
-    
-    [self setUserStreamQueue:[@[] mutableCopy]];
-    self.userStreamTimer = [NSTimer scheduledTimerWithTimeInterval:0.2
-                                                            target:self
-                                                          selector:@selector(checkSearchStreamQueue)
-                                                          userInfo:nil
-                                                           repeats:YES];
-    [self.userStreamTimer fire];
-}
-
-- (void)stopSearchStreamQueue {
-    
-    NSLog(@"%s", __func__);
-    
-    [self.userStreamTimer invalidate];
-}
-
-- (oneway void)checkSearchStreamQueue {
-    
-    if ( [self.userStreamQueue count] != 0 ) {
-        
-        if ( !self.addTweetStopMode ) {
-        
-            TWTweet *addTweet = self.userStreamQueue[0];
-            [self searchStreamReceiveTweet:addTweet];
-            [self.userStreamQueue removeObjectAtIndex:0];
-        }
-    }
-}
-
-- (oneway void)searchStreamReceiveTweet:(TWTweet *)receiveTweet {
-    
-//    NSLog(@"%s", __func__);
-    
-    if ( self.segment.selectedSegmentIndex == TimelineSegmentTimeline ) {
-        
-        @synchronized(self) {
-            
-            //タイムラインに追加
-            [self.currentTweets insertObject:receiveTweet
-                                     atIndex:0];
-        }
-        
-        dispatch_async(dispatch_get_main_queue(), ^{
-            
-            [self.timeline insertRowsAtIndexPaths:@[[NSIndexPath indexPathForRow:0
-                                                                       inSection:0]]
-                                 withRowAnimation:UITableViewRowAnimationTop];
-        });
-        
-        //アイコン保存
-        [self getIconWithTweetArray:[NSMutableArray arrayWithArray:@[receiveTweet]]];
-    }
-}
-
 #pragma mark - NSURLConnectionDataDelegate
 - (void)connection:(NSURLConnection *)connection didReceiveData:(NSData *)data {
     
@@ -2186,22 +1932,6 @@ typedef enum {
         if ( [receiveDic count] == 1 && receiveDic[@"friends"] != nil ) return;
         
         TWTweet *receiveTweet = [TWTweet tweetWithDictionary:receiveDic];
-        if ( receiveTweet == nil ) return;
-        if ( receiveTweet.isEvent &&
-             self.addTweetStopMode ) return;
-        
-        if ( self.searchStream ) {
-            
-            if ( !receiveTweet.isEvent &&
-                 !receiveTweet.isDelete ) {
-            
-                @synchronized(self) {
-                    
-                    [self.userStreamQueue addObject:receiveTweet];
-                }
-            }
-            return;
-        }
         
         if ( [receiveTweet.eventType isNotEmpty] &&
               receiveTweet.favoriteEventeType == FavoriteEventTypeReceive ) {
@@ -2232,7 +1962,7 @@ typedef enum {
             [self userStreamMyAddFavEvent:receiveTweet];
             return;
             
-        } else if ( [receiveTweet.eventType isNotEmpty] &&
+        }else if ( [receiveTweet.eventType isNotEmpty] &&
                     receiveTweet.favoriteEventeType == FavoriteEventTypeRemove ) {
             
             if ( self.currentTweets.count == 0 ) return;
@@ -2243,7 +1973,7 @@ typedef enum {
             [self userStreamMyRemoveFavEvent:receiveTweet];
             return;
             
-        } else if ( receiveTweet.isEvent ) {
+        }else if ( receiveTweet.isEvent ) {
             
             return;
         }
@@ -2275,17 +2005,12 @@ typedef enum {
     
     if ( httpResponse.statusCode == 200 ) {
         
-        [self setAddTweetStopMode:NO];
+        dispatch_async(dispatch_get_main_queue(), ^{
         
-        if ( !self.searchStream ) {
-        
-            dispatch_async(dispatch_get_main_queue(), ^{
-                
-                [USER_STREAM_BUTTON setImage:[UIImage imageNamed:@"stop.png"]
-                                    forState:UIControlStateNormal];
-                [USER_STREAM_BUTTON setEnabled:YES];
-            });
-        }
+            [USER_STREAM_BUTTON setImage:[UIImage imageNamed:@"stop.png"]
+                                forState:UIControlStateNormal];
+            [USER_STREAM_BUTTON setEnabled:YES];
+        });
         
     } else {
         
@@ -2308,7 +2033,7 @@ typedef enum {
 }
 
 #pragma mark - Timeline
-- (void)getIconWithTweetArray:(NSMutableArray *)tweetArray {
+- (oneway void)getIconWithTweetArray:(NSMutableArray *)tweetArray {
     
     NSMutableDictionary *userList = [NSMutableDictionary dictionary];
     
@@ -2316,12 +2041,6 @@ typedef enum {
     for ( TWTweet *tweet in tweetArray ) {
         
         NSString *tempScreenName = tweet.screenName;
-        
-        if ( tweet == nil ||
-             tempScreenName == nil ) {
-            
-            continue;
-        }
         
         [userList setObject:tweet
                      forKey:tempScreenName];
@@ -2421,7 +2140,7 @@ typedef enum {
     }
 }
 
-- (void)requestProfileImageWithURL:(NSString *)biggerUrl screenName:(NSString *)screenName searchName:(NSString *)searchName {
+- (oneway void)requestProfileImageWithURL:(NSString *)biggerUrl screenName:(NSString *)screenName searchName:(NSString *)searchName {
     
     if ( [screenName isNotEmpty] &&
          [biggerUrl isNotEmpty] &&
@@ -2448,7 +2167,8 @@ typedef enum {
         
         [wRequest setCompletionBlock:^ {
             
-            //リクエストしたアイコンのユーザー名
+            //NSLog(@"Request Finished");
+            
             NSString *receiveScreenName = wRequest.userInfo[@"screen_name"];
             
             NSMutableArray *icons = [NSMutableArray array];
@@ -2458,7 +2178,6 @@ typedef enum {
             
             if ( iconList.count != 0 ) {
                 
-                //既にアイコンを持っているか探す
                 for ( NSString *filePath in iconList ) {
                     
                     if ( [filePath hasPrefix:searchIconName] ) {
@@ -2469,10 +2188,8 @@ typedef enum {
                 
                 if ( icons.count != 0 ) {
                     
-                    //キャッシュ削除
                     [[Share images] removeObjectForKey:receiveScreenName];
                     
-                    //古いアイコンを削除
                     for ( NSString *deletePath in icons ) {
                         
                         [FILE_MANAGER removeItemAtPath:[ICONS_DIRECTORY stringByAppendingPathComponent:deletePath]
@@ -2481,31 +2198,19 @@ typedef enum {
                 }
             }
             
+            if ( ![self iconExist:searchName] ) {
+                
+                [wRequest.responseData writeToFile:FILE_PATH
+                                        atomically:YES];
+            }
+            
             UIImage *receiveImage = [UIImage imageWithDataByContext:wRequest.responseData];
 
-            NSString *iconQualitySetting = [USER_DEFAULTS objectForKey:@"IconQuality"];
+            NSString *iconQualitySetting = [D objectForKey:@"IconQuality"];
             if ( [iconQualitySetting isEqualToString:@"Original96"] ) {
                 
                 receiveImage = [ResizeImage aspectResizeForMaxSize:receiveImage
                                                            maxSize:96.0f];
-            }
-            
-            if ( ![self iconExist:searchName] ) {
-             
-                NSString *extension = [wRequest.url.absoluteString pathExtension];
-                NSData *saveData = nil;
-                if ( [extension isEqualToString:@"png"] ) {
-                    
-                    saveData = [EncodeImage png:receiveImage];
-                    
-                } else {
-                    
-                    saveData = [EncodeImage jpg:receiveImage];
-                }
-                
-                //アイコンをファイルに保存
-                [saveData writeToFile:FILE_PATH
-                           atomically:YES];
             }
             
             if ( receiveImage != nil ) {
@@ -2557,11 +2262,7 @@ typedef enum {
 
 - (void)refreshTimelineCell:(NSNumber *)index {
     
-//    NSLog(@"%s", __func__);
-    
-    BOOL beforeStatus = self.addTweetStopMode;
-    
-    [self setAddTweetStopMode:YES];
+    NSLog(@"%s", __func__);
     
     NSInteger i = [index intValue];
     
@@ -2573,7 +2274,6 @@ typedef enum {
         [self.timeline reloadRowsAtIndexPaths:@[[NSIndexPath indexPathForRow:i
                                                                    inSection:0]]
                              withRowAnimation:UITableViewRowAnimationNone];
-        [self setAddTweetStopMode:beforeStatus];
     });
 }
 
@@ -2583,14 +2283,16 @@ typedef enum {
         
         NSString *urlString = notification.userInfo[@"URL"];
         [self.imageWindow loadImage:urlString
-                           viewRect:self.timeline.frame
-                  baseViewTopMargin:TOOL_BAR_HEIGHT + SEGMENT_BAR_HEIGHT];
+                           viewRect:self.timeline.frame];
     }
 }
 
 - (void)openTimelineURL:(NSNotification *)notification {
     
     NSString *urlString = notification.userInfo[@"URL"];
+    
+    if ( urlString == nil ) return;
+    
     [self openBrowser:urlString];
 }
 
@@ -2606,13 +2308,12 @@ typedef enum {
         
     } else {
         
-        NSInteger num = [USER_DEFAULTS integerForKey:@"UseAccount"] - 1;
+        //InReplyTto表示中は何もしない
+//        if ( _otherTweetsMode ) return;
         
-        if ( num < 0 ) {
-         
-            [self.tabBarController setSelectedIndex:0];
-            return;
-        }
+        NSInteger num = [D integerForKey:@"UseAccount"] - 1;
+        
+        if ( num < 0 ) return;
         
         NSInteger accountCount = [TWAccounts accountCount] - 1;
         
@@ -2620,16 +2321,10 @@ typedef enum {
             
             if ( self.userStream ) [self closeStream];
             
-            //List一覧のキャッシュを削除
-            [[TWTweets manager] setAllLists:@[]];
-            [[TWTweets manager] setListID:@""];
-            [[TWTweets manager] setShowingListID:@""];
-            
-            [USER_DEFAULTS setInteger:num
+            [D setInteger:num
                    forKey:@"UseAccount"];
             [self setCurrentTweets:[TWTweets currentTimeline]];
             [self.timeline reloadData];
-            [self setTweetsType:TweetsTypeHomeTimeline];
             [self.segment setSelectedSegmentIndex:0];
             [self requestHomeTimeline];
         }
@@ -2650,23 +2345,20 @@ typedef enum {
 
     if ( self.segment.selectedSegmentIndex == 3 ) return;
 
-    NSInteger num = [USER_DEFAULTS integerForKey:@"UseAccount"] + 1;
+    //InReplyTto表示中は何もしない
+//    if ( _otherTweetsMode ) return;
+
+    NSInteger num = [D integerForKey:@"UseAccount"] + 1;
     NSInteger accountCount = [TWAccounts accountCount] - 1;
     
     if ( accountCount >= num ) {
         
         if ( self.userStream ) [self closeStream];
         
-        //List一覧のキャッシュを削除
-        [[TWTweets manager] setAllLists:@[]];
-        [[TWTweets manager] setListID:@""];
-        [[TWTweets manager] setShowingListID:@""];
-        
-        [USER_DEFAULTS setInteger:num
+        [D setInteger:num
                forKey:@"UseAccount"];
         [self setCurrentTweets:[TWTweets currentTimeline]];
         [self.timeline reloadData];
-        [self setTweetsType:TweetsTypeHomeTimeline];
         [self.segment setSelectedSegmentIndex:0];
         [self requestHomeTimeline];
     }
@@ -2763,54 +2455,44 @@ typedef enum {
         NSString *screenName = sender.targetTweet.screenName;
         NSString *tweetID = sender.targetTweet.tweetID;
         
-        if ( [USER_DEFAULTS integerForKey:@"TimelineIconAction"] == TimelineIconActionTypeUserMenu ) {
+        if ( [D integerForKey:@"TimelineIconAction"] == TimelineIconActionTypeUserMenu ) {
             
-            [self.timeline setScrollEnabled:NO];
-            [self setSelectedTweet:sender.targetTweet];
-            [self createTimelineMenu:TimeLineMenuIdentifierUser];
             
-        } else if ( [USER_DEFAULTS integerForKey:@"TimelineIconAction"] == TimelineIconActionTypeReply ) {
             
-            screenName = [NSString stringWithFormat:@"@%@ ", screenName];
+        }else if ( [D integerForKey:@"TimelineIconAction"] == TimelineIconActionTypeReply ) {
             
-            NSNotification *notification = [NSNotification notificationWithName:@"SetTweetViewText"
-                                                                         object:nil
-                                                                       userInfo:
-                                            @{
-                                            @"Text" : screenName,
-                                            @"InReplyToID" : tweetID,
-                                            @"InsertToTop" : @YES
-                                            }];
-            [[NSNotificationCenter defaultCenter] postNotification:notification];
+            [[TWTweets manager] setText:screenName];
+            [[TWTweets manager] setInReplyToID:tweetID];
+            [[TWTweets manager] setTabChangeFunction:@"Reply"];
             [self.tabBarController setSelectedIndex:0];
             
-        } else if ( [USER_DEFAULTS integerForKey:@"TimelineIconAction"] == TimelineIconActionTypeFav ) {
+        }else if ( [D integerForKey:@"TimelineIconAction"] == TimelineIconActionTypeFav ) {
             
             BOOL favorited = sender.targetTweet.isFavorited;
             
             if ( favorited ) {
                 
                 [TWEvent unFavorite:tweetID
-                       accountIndex:[USER_DEFAULTS integerForKey:@"UseAccount"]];
+                       accountIndex:[D integerForKey:@"UseAccount"]];
                 
             } else {
                 
                 [self changeFavorite:tweetID];
                 [self addFavorite:tweetID
-                     accountIndex:[USER_DEFAULTS integerForKey:@"UseAccount"]];
+                     accountIndex:[D integerForKey:@"UseAccount"]];
             }
             
-        } else if ( [USER_DEFAULTS integerForKey:@"TimelineIconAction"] == TimelineIconActionTypeRT ) {
+        }else if ( [D integerForKey:@"TimelineIconAction"] == TimelineIconActionTypeRT ) {
             
             [TWEvent reTweet:tweetID
-                accountIndex:[USER_DEFAULTS integerForKey:@"UseAccount"]];
+                accountIndex:[D integerForKey:@"UseAccount"]];
             
-        } else if ( [USER_DEFAULTS integerForKey:@"TimelineIconAction"] == TimelineIconActionTypeFavRT ) {
+        }else if ( [D integerForKey:@"TimelineIconAction"] == TimelineIconActionTypeFavRT ) {
             
             [TWEvent favoriteReTweet:tweetID
-                        accountIndex:[USER_DEFAULTS integerForKey:@"UseAccount"]];
+                        accountIndex:[D integerForKey:@"UseAccount"]];
             
-        } else if ( [USER_DEFAULTS integerForKey:@"TimelineIconAction"] == TimelineIconActionTypeSelectIDFavRT ) {
+        }else if ( [D integerForKey:@"TimelineIconAction"] == TimelineIconActionTypeSelectIDFavRT ) {
             
             [self setSelectedTweet:sender.targetTweet];
             [self timelineMenuSelectID:nil];
@@ -2825,15 +2507,13 @@ typedef enum {
     NSInteger index = 0;
     for ( TWTweet *tweet in self.currentTweets ) {
         
-        if ( [tweet.tweetID isEqualToString:targerTweetID] &&
-             !tweet.isReTweet ) {
+        if ( [tweet.tweetID isEqualToString:targerTweetID] ) {
             
             if ( !tweet.isFavorited ) {
                 
                 TWTweet *favedTweet = tweet;
                 [favedTweet setIsFavorited:YES];
-                [favedTweet setTweetTextColor:CellTextColorGold];
-                [favedTweet.attributedString setTextColor:[TWTweet getTweetTextColor:favedTweet.tweetTextColor]];
+                [favedTweet setTextColor:CellTextColorGold];
                 
                 @synchronized(self) {
                     
@@ -2860,19 +2540,23 @@ typedef enum {
     
     DISPATCH_AFTER(0.2) ^{
         
-        CGRect topBarRect = self.topBar.frame;
-        topBarRect.origin.x = 0.0f;
-        CGRect segmentRect = self.segment.frame;
-        segmentRect.origin.x = 0.0f;
-        CGRect timelineRect = self.timeline.frame;
-        timelineRect.origin.x = 0.0f;
-        
         [UIView animateWithDuration:0.2
                          animations:^{
                              
-                             [self.topBar setFrame:topBarRect];
-                             [self.segment setFrame:segmentRect];
-                             [self.timeline setFrame:timelineRect];
+                             [self.topBar setFrame:CGRectMake(0.0f,
+                                                              self.topBar.frame.origin.y,
+                                                              self.topBar.frame.size.width,
+                                                              self.topBar.frame.size.height)];
+                             
+                             [self.segment setFrame:CGRectMake(0.0f,
+                                                               self.segment.frame.origin.y,
+                                                               self.segment.frame.size.width,
+                                                               self.segment.frame.size.height)];
+                             
+                             [self.timeline setFrame:CGRectMake(0.0f,
+                                                                self.timeline.frame.origin.y,
+                                                                self.timeline.frame.size.width,
+                                                                self.timeline.frame.size.height)];
                          }
                          completion:^(BOOL finished) {
                              
@@ -2919,7 +2603,7 @@ typedef enum {
         NSMutableDictionary *addDic = BLANK_M_DIC;
         
         //NGワード設定を読み込む
-        NSMutableArray *ngWordArray = [NSMutableArray arrayWithArray:[USER_DEFAULTS objectForKey:@"NGWord"]];
+        NSMutableArray *ngWordArray = [NSMutableArray arrayWithArray:[D objectForKey:@"NGWord"]];
         
         //NGワードに追加
         [addDic setObject:[DeleteWhiteSpace string:hashTag]
@@ -2927,7 +2611,7 @@ typedef enum {
         [ngWordArray addObject:addDic];
         
         //設定に反映
-        [USER_DEFAULTS setObject:ngWordArray
+        [D setObject:ngWordArray
               forKey:@"NGWord"];
         
         //タイムラインにNGワードを適用
@@ -2952,10 +2636,10 @@ typedef enum {
     
     NSMutableDictionary *addDic = BLANK_M_DIC;
     
-    NSString *clientName = self.selectedTweet.sourceName;
+    NSString *clientName = self.selectedTweet.source;
     
     //NGクライアント設定を読み込む
-    NSMutableArray *ngClientArray = [NSMutableArray arrayWithArray:[USER_DEFAULTS objectForKey:@"NGClient"]];
+    NSMutableArray *ngClientArray = [NSMutableArray arrayWithArray:[D objectForKey:@"NGClient"]];
     
     if ( clientName != nil ) {
         
@@ -2963,7 +2647,7 @@ typedef enum {
                    forKey:@"Client"];
         [ngClientArray addObject:addDic];
         
-        [USER_DEFAULTS setObject:ngClientArray
+        [D setObject:ngClientArray
               forKey:@"NGClient"];
         
         //タイムラインにNGワードを適用
@@ -3045,8 +2729,7 @@ typedef enum {
             
             cell = [[TimelineAttributedRTCell alloc] initWithStyle:UITableViewCellStyleDefault
                                                    reuseIdentifier:RT_CELL_IDENTIFIER
-                                                          forWidth:CELL_WIDTH
-                                                  timelineCellType:TimelineCellTypeMain];
+                                                          forWidth:CELL_WIDTH];
             [cell.iconView addTarget:self
                               action:@selector(pushIcon:)
                     forControlEvents:UIControlEventTouchUpInside];
@@ -3060,14 +2743,12 @@ typedef enum {
     } else {
         
         TimelineAttributedCell *cell = (TimelineAttributedCell *)[tableView dequeueReusableCellWithIdentifier:CELL_IDENTIFIER];
-    
+        
         if ( cell == nil ) {
             
             cell = [[TimelineAttributedCell alloc] initWithStyle:UITableViewCellStyleDefault
                                                  reuseIdentifier:CELL_IDENTIFIER
-                                                        forWidth:CELL_WIDTH
-                                                timelineCellType:TimelineCellTypeMain];
-            
+                                                        forWidth:CELL_WIDTH];
             [cell.iconView addTarget:self
                               action:@selector(pushIcon:)
                     forControlEvents:UIControlEventTouchUpInside];
@@ -3088,25 +2769,22 @@ typedef enum {
     
     if ( currentTweet.favoriteEventeType == FavoriteEventTypeReceive ) {
         
-        return [currentTweet.text heightForContents:[UIFont systemFontOfSize:12.0f]
-                                            toWidht:264.0f
-                                          minHeight:31.0f
-                                      lineBreakMode:NSLineBreakByCharWrapping] + heightOffset;
+        return [[NSString stringWithFormat:@"【%@がお気に入りに追加】\n%@",
+                 currentTweet.favUser,
+                 currentTweet.text]
+                heightForContents:[UIFont systemFontOfSize:12.0f]
+                toWidht:264.0f
+                minHeight:31.0f
+                lineBreakMode:NSLineBreakByCharWrapping] + heightOffset;
     }
     
-    CGFloat height = currentTweet.timelineCellHeight + heightOffset;
-    CGFloat minHeight = 56.0f;
-    if ( currentTweet.isReTweet ) {
+    if ( currentTweet.isReTweet &&
+         currentTweet.cellHeight == 31.0f ) {
         
-        minHeight += 6.0f;
+        heightOffset += 6.0f;
     }
     
-    if ( height < minHeight ) {
-        
-        height = minHeight;
-    }
-    
-    return height;
+    return currentTweet.cellHeight + heightOffset;
 }
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
@@ -3121,19 +2799,19 @@ typedef enum {
     } else {
      
         TWTweet *selectedTweet = self.currentTweets[indexPath.row];
-        [self setSelectedTweet:selectedTweet];
         
         if ( selectedTweet.isEvent ) {
             
-            NSString *targetId = selectedTweet.tweetID;
+            NSString *targetId = self.selectedTweet.tweetID;
             NSString *favStarUrl = [NSString stringWithFormat:@"http://ja.favstar.fm/users/%@/status/%@",
-                                    selectedTweet.screenName,
+                                    [TWAccounts currentAccountName],
                                     targetId];
             [self openBrowser:favStarUrl];
             
         } else {
             
             [self.timeline setScrollEnabled:NO];
+            [self setSelectedTweet:selectedTweet];
             [self createTimelineMenu:TimeLineMenuIdentifierMain];
         }
     }
@@ -3145,14 +2823,14 @@ typedef enum {
     [self.segment setUserInteractionEnabled:NO];
     
     self.timelineMenu = [[TimelineMenu alloc] initWithTweet:self.selectedTweet
-                                                    forMenu:menuIdentifier
+                                                    forMenu:TimeLineMenuIdentifierMain
                                                  controller:self];
     [self.timelineMenu setAlpha:0.0f];
     [self.view addSubview:self.timelineMenu];
     
     DISPATCH_AFTER(0.1) ^{
         
-        [UIView animateWithDuration:0.3
+        [UIView animateWithDuration:0.3f
                          animations:^{
                              
                              [self.timelineMenu setAlpha:1.0f];
@@ -3164,7 +2842,7 @@ typedef enum {
          ];
     });
     
-    [UIView animateWithDuration:0.2
+    [UIView animateWithDuration:0.2f
                      animations:^{
                          
                          self.topBar.frame = CGRectMake(266.0f,
@@ -3187,20 +2865,30 @@ typedef enum {
 
 - (void)createSearchAlert:(NSString *)title alertType:(TextFieldType)alertType {
     
-    InputAlertView *inputAlert = [[InputAlertView alloc] initWithTitle:title
-                                                               message:@""
-                                                              delegate:self
-                                                     cancelButtonTitle:@"キャンセル"
-                                                         okButtonTitle:@"確定"
-                                                            inputStyle:InputAlertViewStyleSingle];
-    [inputAlert setTag:alertType];
-    [inputAlert setTopTextFieldText:@"" placeholder:@""];
-    [inputAlert show];
+    self.searchAlert = [[UIAlertView alloc] initWithTitle:title
+                                                  message:@"\n"
+                                                 delegate:self
+                                        cancelButtonTitle:@"キャンセル"
+                                        otherButtonTitles:@"確定", nil];
+    [self.searchAlert setTag:alertType];
+    
+    self.searchAlertTextField = [[SSTextField alloc] initWithFrame:CGRectMake(12.0f,
+                                                                              40.0f,
+                                                                              260.0f,
+                                                                              25.0f)];
+    [self.searchAlertTextField setBackgroundColor:[UIColor whiteColor]];
+    [self.searchAlertTextField setContentVerticalAlignment:UIControlContentVerticalAlignmentCenter];
+    [self.searchAlertTextField setDelegate:self];
+    [self.searchAlertTextField setText:BLANK];
+    [self.searchAlertTextField setTag:alertType];
+    [self.searchAlert addSubview:self.searchAlertTextField];
+    [self.searchAlert show];
+    [self.searchAlertTextField becomeFirstResponder];
 }
 
 - (void)getMyAccountIcon {
     
-    if ( [[Share images] count] == 0 ) {
+    if ( [Share images].count == 0 ) {
         
         NSLog(@"icon file 0");
         
@@ -3215,7 +2903,7 @@ typedef enum {
     
     //NSLog(@"icons key: %@", array);
     
-    NSArray *allKeys = [[Share images] allKeys];
+    NSArray *allKeys = [Share images].allKeys;
     
     for ( string in allKeys ) {
         
@@ -3259,13 +2947,6 @@ typedef enum {
     
     if ( self.pickerVisible ) [self hidePicker];
     [self.topBar setItems:TOP_BAR_ITEM_OTHER];
-    [self setAddTweetStopMode:YES];
-}
-
-- (void)setSearchTweetsMode {
-    
-    if ( self.pickerVisible ) [self hidePicker];
-    [self.topBar setItems:TOP_BAR_ITEM_SEARCH];
     [self setAddTweetStopMode:YES];
 }
 
@@ -3364,27 +3045,25 @@ typedef enum {
 
 - (void)openBrowser:(NSString *)URL {
     
-    NSString *useragent = IPHONE_USER_AGENT;
+    NSString *useragent = IPHONE_USERAGENT;
     
-    if ( [[USER_DEFAULTS objectForKey:@"UserAgent"] isEqualToString:@"FireFox"] ) {
+    if ( [[D objectForKey:@"UserAgent"] isEqualToString:@"FireFox"] ) {
         
-        useragent = FIREFOX_USER_AGENT;
+        useragent = FIREFOX_USERAGENT;
         
-    } else if ( [[USER_DEFAULTS objectForKey:@"UserAgent"] isEqualToString:@"iPad"] ) {
+    }else if ( [[D objectForKey:@"UserAgent"] isEqualToString:@"iPad"] ) {
         
-        useragent = IPAD_USER_AGENT;
+        useragent = IPAD_USERAFENT;
     }
     
     NSDictionary *dictionary = [[NSDictionary alloc] initWithObjectsAndKeys:useragent, @"UserAgent", nil];
-    [USER_DEFAULTS registerDefaults:dictionary];
+    [D registerDefaults:dictionary];
     
     [self setWebBrowserMode:YES];
     
-    URL = [URL deleteWord:@"%E2%80%9D"];
-    
-    WebViewExController *browserViewController = [[WebViewExController alloc] initWithURL:URL];
-    [browserViewController setHidesBottomBarWhenPushed:YES];
-    [self.navigationController pushViewController:browserViewController
+    WebViewExController *dialog = [[WebViewExController alloc] initWithURL:URL];
+    [dialog setHidesBottomBarWhenPushed:YES];
+    [self.navigationController pushViewController:dialog
                                          animated:YES];
 }
 
@@ -3435,7 +3114,7 @@ typedef enum {
     [self.pickerBase addSubview:self.eventPicker];
     
     //アカウント初期値
-    [self.eventPicker selectRow:[USER_DEFAULTS integerForKey:@"UseAccount"]
+    [self.eventPicker selectRow:[D integerForKey:@"UseAccount"]
                 inComponent:0
                    animated:NO];
     
@@ -3489,12 +3168,12 @@ typedef enum {
                  accountIndex:account];
         }
         
-    } else if ( function == 1 ) {
+    }else if ( function == 1 ) {
         
         [TWEvent reTweet:tweetID
             accountIndex:account];
         
-    } else if ( function == 2 ) {
+    }else if ( function == 2 ) {
         
         [TWEvent favoriteReTweet:tweetID
                     accountIndex:account];

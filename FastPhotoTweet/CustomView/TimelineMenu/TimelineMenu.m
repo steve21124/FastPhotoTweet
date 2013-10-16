@@ -15,7 +15,6 @@
 #import "IconButton.h"
 #import "TimelineMenu.h"
 #import "TimelineMenuCell.h"
-#import "NSDictionary+DataExtraction.h"
 #import "NSString+Calculator.h"
 #import "NSString+RegularExpression.h"
 #import "NSArrayAdditions.h"
@@ -91,10 +90,10 @@
                                                       target:self
                                                       action:@selector(pushBackButton)];
     
-    self.space = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace
+    self.spaceItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace
                                                                target:nil
                                                                action:nil];
-    [_topBar setItems:@[_space, _cancelButton]];
+    [_topBar setItems:@[_spaceItem, _cancelButton]];
     
     self.menuTable = [[UITableView alloc] initWithFrame:CGRectMake(0,
                                                                    44,
@@ -193,16 +192,22 @@
     
     if ( indexPath.row == 0 ) {
         
+        //セルの高さを設定
         TWTweet *currentTweet = self.tweet;
         CGFloat heightOffset = 25.0f;
-        
-        if ( currentTweet.isReTweet &&
-             currentTweet.cellHeight == 31.0f ) {
+        CGFloat height = currentTweet.menuCellHeight + heightOffset;
+        CGFloat minHeight = 56.0f;
+        if ( currentTweet.isReTweet ) {
             
-            heightOffset += 6.0f;
+            minHeight += 6.0f;
         }
         
-        return currentTweet.menuCellHeight + heightOffset;
+        if ( height < minHeight ) {
+            
+            height = minHeight;
+        }
+
+        return height;
         
     } else {
         
@@ -226,7 +231,7 @@
                 [_nextMenuList insertObject:_tweet
                                     atIndex:0];
                 _count = 0;
-                [_topBar setItems:@[_backButton, _space, _cancelButton]
+                [_topBar setItems:@[_backButton, _spaceItem, _cancelButton]
                          animated:YES];
                 
                 [self startRemoveAllTimer];
@@ -238,7 +243,7 @@
                                     atIndex:0];
                 
                 _count = 0;
-                [_topBar setItems:@[_backButton, _space, _cancelButton]
+                [_topBar setItems:@[_backButton, _spaceItem, _cancelButton]
                          animated:YES];
                 [self startRemoveAllTimer];
                 
@@ -460,7 +465,7 @@
                     _count = 0;
                     _menuNo = 3;
                     _menuTable.userInteractionEnabled = NO;
-                    [_topBar setItems:@[_backButton, _space, _cancelButton] animated:YES];
+                    [_topBar setItems:@[_backButton, _spaceItem, _cancelButton] animated:YES];
                     [self startRemoveAllTimer];
                 }
                 /////////////
@@ -473,7 +478,7 @@
                 _count = 0;
                 _menuNo = 4;
                 _menuTable.userInteractionEnabled = NO;
-                [_topBar setItems:@[_backButton, _space, _cancelButton] animated:YES];
+                [_topBar setItems:@[_backButton, _spaceItem, _cancelButton] animated:YES];
                 [self startRemoveAllTimer];
             }
             
@@ -587,7 +592,7 @@
     self.nextMenuList = [NSMutableArray arrayWithArray:MAIN_MENU];
     [_nextMenuList insertObject:_tweet
                         atIndex:0];
-    [_topBar setItems:@[_space, _cancelButton]
+    [_topBar setItems:@[_spaceItem, _cancelButton]
              animated:YES];
     
     [self startRemoveAllTimer];
@@ -602,16 +607,18 @@
     } else if ( menuIndex == 2 ) {
         
         InputAlertView *alert = [[InputAlertView alloc] initWithTitle:@"TwilogSearch"
+                                                              message:@""
                                                              delegate:self.controller
                                                     cancelButtonTitle:@"キャンセル"
-                                                      doneButtonTitle:@"確定"
-                                                    isMultiInputField:YES
-                                                           doneAction:@selector(openTwilogSearch:searchWord:)];
-        [alert.multiTextFieldTop setPlaceholder:@"ScreenName"];
-        [alert.multiTextFieldTop setText:screenName];
-        [alert.multiTextFieldBottom setPlaceholder:@"SearchWord"];
+                                                        okButtonTitle:@"確定"
+                                                           inputStyle:InputAlertViewStyleDouble];
+        [alert setTopTextFieldText:screenName
+                       placeholder:@"ScreenName"];
+        [alert setBottomTextFieldText:@""
+                          placeholder:@"SearchWord"];
+        [alert setTag:1];
         [alert show];
-        [alert.multiTextFieldBottom becomeFirstResponder];
+        [[alert bottomTextField] becomeFirstResponder];
         
     } else if ( menuIndex == 3 ) {
         
@@ -637,7 +644,7 @@
         _count = 0;
         _menuNo = 4;
         _menuTable.userInteractionEnabled = NO;
-        [_topBar setItems:@[_backButton, _space, _cancelButton] animated:YES];
+        [_topBar setItems:@[_backButton, _spaceItem, _cancelButton] animated:YES];
         [self startRemoveAllTimer];
     }
 }
@@ -646,13 +653,13 @@
     
     _timer = [NSTimer scheduledTimerWithTimeInterval:0.04
                                               target:self
-                                            selector:@selector(removeAllItems)
+                                            selector:@selector(removeAllMenuItems)
                                             userInfo:nil
                                              repeats:YES];
     [_timer fire];
 }
 
-- (void)removeAllItems {
+- (void)removeAllMenuItems {
     
     [_timer invalidate];
     

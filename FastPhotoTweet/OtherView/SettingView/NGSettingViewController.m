@@ -11,7 +11,6 @@
 
 #import "NGSettingViewController.h"
 
-#define BLANK @""
 #define BLANK_ARRAY [NSArray array]
 
 @implementation NGSettingViewController

@@ -8,6 +8,8 @@
 #import "SettingViewController.h"
 #import "ListViewController.h"
 
+#import "InputAlertView.h"
+
 //セクション数
 #define SECTION_COUNT 5
 //セクション0の項目数 (画像関連設定)
@@ -72,8 +74,6 @@
 
 #define NAME_LICENSE @"ライセンス"
 #define SPECIAL_THANKS @"スペシャルサンクス"
-
-#define BLANK @""
 
 @implementation SettingViewController
 @synthesize tv;
@@ -811,30 +811,22 @@
             //カスタム書式を編集
             alertTextNo = 0;
             
-            NSString *message = @"\n曲名[st] アーティスト名[ar]\nアルバム名[at] 再生数[pc] レート[rt]";
+            NSString *message = @"曲名[st] アーティスト名[ar] アルバム名[at] 再生数[pc] レート[rt]";
             NSString *alertMessage = BLANK;
             
             if ( [EmptyCheck check:[USER_DEFAULTS objectForKey:@"NowPlayingEditText"]] ) {
+                
                 alertMessage = [USER_DEFAULTS objectForKey:@"NowPlayingEditText"];
             }
             
-            alert = [[UIAlertView alloc] initWithTitle:NOWPLAYING_CUSTOM_EDIT
-                                               message:message
-                                              delegate:self
-                                     cancelButtonTitle:@"キャンセル"
-                                     otherButtonTitles:@"確定", nil];
-            
-            alertText = [[UITextField alloc] initWithFrame:CGRectMake(12, 40, 260, 25)];
-            [alertText setBackgroundColor:[UIColor whiteColor]];
-            alertText.contentVerticalAlignment = UIControlContentVerticalAlignmentCenter;
-            alertText.delegate = self;
-            alertText.text = alertMessage;
-            
-            [alert addSubview:alertText];
-            [alert show];
-            [alert release];
-            [alertText becomeFirstResponder];
-            [alertText release];
+            InputAlertView *inputAlert = [[InputAlertView alloc] initWithTitle:NOWPLAYING_CUSTOM_EDIT
+                                                                       message:message
+                                                                      delegate:self
+                                                             cancelButtonTitle:@"キャンセル"
+                                                                 okButtonTitle:@"確定"
+                                                                    inputStyle:InputAlertViewStyleSingle];
+            [inputAlert.topTextField setText:alertMessage];
+            [inputAlert show];
             
             return;
             
@@ -855,31 +847,21 @@
             //サブ書式を編集
             alertTextNo = 1;
             
-            NSString *message = @"\n曲名[st] アーティスト名[ar]\nアルバム名[at] 再生数[pc] レート[rt]";
+            NSString *message = @"曲名[st] アーティスト名[ar] アルバム名[at] 再生数[pc] レート[rt]";
             NSString *alertMessage = BLANK;
             
             if ( [EmptyCheck check:[USER_DEFAULTS objectForKey:@"NowPlayingEditTextSub"]] ) {
                 alertMessage = [USER_DEFAULTS objectForKey:@"NowPlayingEditTextSub"];
             }
             
-            alert = [[UIAlertView alloc] initWithTitle:NOWPLAYING_SUB_STYLE
-                                               message:message
-                                              delegate:self
-                                     cancelButtonTitle:@"キャンセル"
-                                     otherButtonTitles:@"確定", nil];
-            
-            alertText = [[UITextField alloc] initWithFrame:CGRectMake(12, 40, 260, 25)];
-            [alertText setBackgroundColor:[UIColor whiteColor]];
-            alertText.contentVerticalAlignment = UIControlContentVerticalAlignmentCenter;
-            alertText.delegate = self;
-            alertText.text = alertMessage;
-            
-            [alert addSubview:alertText];
-            [alert show];
-            [alert release];
-            [alertText becomeFirstResponder];
-            [alertText release];
-            
+            InputAlertView *inputAlert = [[InputAlertView alloc] initWithTitle:NOWPLAYING_SUB_STYLE
+                                                                       message:message
+                                                                      delegate:self
+                                                             cancelButtonTitle:@"キャンセル"
+                                                                 okButtonTitle:@"確定"
+                                                                    inputStyle:InputAlertViewStyleSingle];
+            [inputAlert.topTextField setText:alertMessage];
+            [inputAlert show];
             return;
             
         } else if ( indexPath.row == 4 ) {
@@ -911,7 +893,7 @@
             //Webページ投稿書式変更
             alertTextNo = 2;
             
-            NSString *message = @"\nタイトル[title] URL[url]";
+            NSString *message = @"タイトル[title] URL[url]";
             NSString *alertMessage = BLANK;
             
             if ( [EmptyCheck check:[USER_DEFAULTS objectForKey:@"WebPagePostFormat"]] ) {
@@ -924,24 +906,14 @@
                 [USER_DEFAULTS setObject:alertMessage forKey:@"WebPagePostFormat"];
             }
             
-            alert = [[UIAlertView alloc] initWithTitle:WEB_PAGE_SHARE_STYLE
-                                               message:message
-                                              delegate:self
-                                     cancelButtonTitle:@"キャンセル"
-                                     otherButtonTitles:@"確定", nil];
-            
-            alertText = [[UITextField alloc] initWithFrame:CGRectMake(12, 40, 260, 25)];
-            [alertText setBackgroundColor:[UIColor whiteColor]];
-            alertText.contentVerticalAlignment = UIControlContentVerticalAlignmentCenter;
-            alertText.delegate = self;
-            alertText.text = alertMessage;
-            
-            [alert addSubview:alertText];
-            [alert show];
-            [alert release];
-            [alertText becomeFirstResponder];
-            [alertText release];
-            
+            InputAlertView *inputAlert = [[InputAlertView alloc] initWithTitle:WEB_PAGE_SHARE_STYLE
+                                                                       message:message
+                                                                      delegate:self
+                                                             cancelButtonTitle:@"キャンセル"
+                                                                 okButtonTitle:@"確定"
+                                                                    inputStyle:InputAlertViewStyleSingle];
+            [inputAlert.topTextField setText:alertMessage];
+            [inputAlert show];
             return;
             
         } else if ( indexPath.row == 7 ) {
@@ -961,7 +933,7 @@
             //引用投稿書式変更
             alertTextNo = 3;
             
-            NSString *message = @"\nタイトル[title] URL[url] 引用[quote]";
+            NSString *message = @"タイトル[title] URL[url] 引用[quote]";
             NSString *alertMessage = BLANK;
             
             if ( [EmptyCheck check:[USER_DEFAULTS objectForKey:@"QuoteFormat"]] ) {
@@ -974,24 +946,14 @@
                 [USER_DEFAULTS setObject:alertMessage forKey:@"QuoteFormat"];
             }
             
-            alert = [[UIAlertView alloc] initWithTitle:WEB_PAGE_QUOTE_STYLE
-                                               message:message
-                                              delegate:self
-                                     cancelButtonTitle:@"キャンセル"
-                                     otherButtonTitles:@"確定", nil];
-            
-            alertText = [[UITextField alloc] initWithFrame:CGRectMake(12, 40, 260, 25)];
-            [alertText setBackgroundColor:[UIColor whiteColor]];
-            alertText.contentVerticalAlignment = UIControlContentVerticalAlignmentCenter;
-            alertText.delegate = self;
-            alertText.text = alertMessage;
-            
-            [alert addSubview:alertText];
-            [alert show];
-            [alert release];
-            [alertText becomeFirstResponder];
-            [alertText release];
-            
+            InputAlertView *inputAlert = [[InputAlertView alloc] initWithTitle:WEB_PAGE_QUOTE_STYLE
+                                                                       message:message
+                                                                      delegate:self
+                                                             cancelButtonTitle:@"キャンセル"
+                                                                 okButtonTitle:@"確定"
+                                                                    inputStyle:InputAlertViewStyleSingle];
+            [inputAlert.topTextField setText:alertMessage];
+            [inputAlert show];
             return;
             
         } else if ( indexPath.row == 9 ) {
@@ -1268,65 +1230,46 @@
     }
 }
 
-- (void)alertView:(UIAlertView *)alertView clickedButtonAtIndex:(NSInteger)buttonIndex {
+- (void)alertView:(InputAlertView *)alertView clickedButtonAtIndex:(NSInteger)buttonIndex {
+    
+    if ( buttonIndex == alertView.cancelButtonIndex ) {
+        
+        return;
+    }
     
     //確定が押された
     if ( alertTextNo == 0 ) {
         
-        if (buttonIndex == 1) {
-            
-            //カスタム書式を保存
-            [USER_DEFAULTS setObject:alertText.text forKey:@"NowPlayingEditText"];
-        }
+        //カスタム書式を保存
+        [USER_DEFAULTS setObject:alertView.topTextField.text
+                          forKey:@"NowPlayingEditText"];
         
     } else if ( alertTextNo == 1 ) {
         
         //サブ書式を保存
-        [USER_DEFAULTS setObject:alertText.text forKey:@"NowPlayingEditTextSub"];
+        [USER_DEFAULTS setObject:alertView.topTextField.text
+                          forKey:@"NowPlayingEditTextSub"];
         
     } else if ( alertTextNo == 2 ) {
         
         //Webページ投稿書式を保存
-        [USER_DEFAULTS setObject:alertText.text forKey:@"WebPagePostFormat"];
+        [USER_DEFAULTS setObject:alertView.topTextField.text
+                          forKey:@"WebPagePostFormat"];
         
     } else if ( alertTextNo == 3 ) {
         
         //引用投稿書式を保存
-        [USER_DEFAULTS setObject:alertText.text forKey:@"QuoteFormat"];
+        [USER_DEFAULTS setObject:alertView.topTextField.text
+                          forKey:@"QuoteFormat"];
     }
 }
 
 - (BOOL)textFieldShouldReturn:(UITextField *)sender {
     
-    //NSLog(@"Textfield Enter: %@", sender.text);
-    
-    if ( alertTextNo == 0 ) {
-        
-        //カスタム書式を保存
-        [USER_DEFAULTS setObject:alertText.text forKey:@"NowPlayingEditText"];
-        
-    } else if ( alertTextNo == 1 ) {
-        
-        //サブ書式を保存
-        [USER_DEFAULTS setObject:alertText.text forKey:@"NowPlayingEditTextSub"];
-        
-    } else if ( alertTextNo == 2 ) {
-        
-        //Webページ投稿書式を保存
-        [USER_DEFAULTS setObject:alertText.text forKey:@"WebPagePostFormat"];
-        
-    } else if ( alertTextNo == 3 ) {
-        
-        //引用投稿書式を保存
-        [USER_DEFAULTS setObject:alertText.text forKey:@"QuoteFormat"];
-    }
-    
-    //キーボードを閉じる
-    [sender resignFirstResponder];
-    
-    //アラートを閉じる
-    [alert dismissWithClickedButtonIndex:0 animated:YES];
-    
+    InputAlertView *inputAlert = (InputAlertView *)sender.superview;
+    [self alertView:inputAlert clickedButtonAtIndex:1];
+    [inputAlert dismissWithClickedButtonIndex:1
+                                     animated:YES];
     return YES;
 }
 

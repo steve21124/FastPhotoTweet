@@ -39,7 +39,7 @@
 @synthesize topBar;
 @synthesize urlField;
 @synthesize searchField;
-@synthesize bottomBar;
+@synthesize bottomToolBar;
 @synthesize closeButton;
 @synthesize reloadButton;
 @synthesize backButton;
@@ -126,7 +126,7 @@
     fullScreen = NO;
     editing = NO;
     downloading = NO;
-    loading = NO;
+    pageLoading = NO;
     
     //アプリがアクティブになった場合の通知を受け取る設定
     NSNotificationCenter *notificationCenter = [NSNotificationCenter defaultCenter];
@@ -148,9 +148,7 @@
     [self setSearchEngine];
     
     //ツールバーにボタンをセット
-    [bottomBar setItems:BOTTOM_BAR animated:NO];
-    
-    self.appDelegate.browserOpenMode = YES;
+    [bottomToolBar setItems:BOTTOM_BAR animated:NO];
     
     //URLSchemeダウンロード判定
     if ( [EmptyCheck check:self.appDelegate.urlSchemeDownloadUrl] ) {
@@ -159,14 +157,12 @@
         return;
     }
     
-    if (( self.appDelegate.pcUaMode ||
-         [EmptyCheck string:self.appDelegate.reOpenUrl] ) &&
-          self.appDelegate.tabBarController.selectedIndex != 1 ) {
+    if (( [EmptyCheck string:self.appDelegate.reOpenUrl] ) &&
+           self.appDelegate.tabBarController.selectedIndex != 1 ) {
         
         [_wv loadRequestWithString:self.appDelegate.reOpenUrl];
         
         self.appDelegate.reOpenUrl = BLANK;
-        self.appDelegate.pcUaMode = NO;
         
     } else {
      
@@ -451,42 +447,12 @@
 
 - (void)becomeActive:(NSNotification *)notification {
     
-    if ( self.appDelegate.willResignActiveBrowser ) {
-        
-        self.appDelegate.willResignActiveBrowser = NO;
-        
-        return;
-    }
-    
     //URLSchemeダウンロード判定
     if ( [EmptyCheck check:self.appDelegate.urlSchemeDownloadUrl] ) {
         
         [self requestStart:self.appDelegate.urlSchemeDownloadUrl];
         
         return;
-    }
-    
-    if ( self.appDelegate.pboardURLOpenBrowser ) {
-     
-        self.appDelegate.pboardURLOpenBrowser = NO;
-        return;
-    }
-    
-    if ( !showActionSheet &&
-         [self.view window] != nil ) {
-     
-        showActionSheet = YES;
-        
-        actionSheetNo = 14;
-        UIActionSheet *sheet = [[UIActionSheet alloc]
-                                initWithTitle:@"動作選択"
-                                delegate:self
-                                cancelButtonTitle:@"Cancel"
-                                destructiveButtonTitle:nil
-                                otherButtonTitles:@"Tweet", @"FastGoogle", @"ペーストボードのURLを開く", nil];
-        
-        [sheet showInView:self.view];
-        sheet = nil;
     }
 }
 
@@ -574,7 +540,7 @@
     
     if ( [InternetConnection enable] ) {
         
-        if ( loading ) {
+        if ( pageLoading ) {
             
             [_wv stopLoading];
             [ActivityIndicator off];
@@ -911,7 +877,7 @@
                 
                 NSNotification *notification = [NSNotification notificationWithName:@"SetTweetViewText"
                                                                              object:nil
-                                                                           userInfo:@{@"Text":postText}];
+                                                                           userInfo:@{@"Text":postText, @"CursorToTop" : @([USER_DEFAULTS boolForKey:@"WebPagePostCursorPosition"])}];
                 [[NSNotificationCenter defaultCenter] postNotification:notification];
                 
                 if ( self.appDelegate.tabBarController.selectedIndex == 0 ) {
@@ -1033,15 +999,15 @@
             
         } else if ( buttonIndex == 5 ) {
             
-            NSString *useragent = IPHONE_USERAGENT;
+            NSString *useragent = IPHONE_USER_AGENT;
             
             if ( [[USER_DEFAULTS objectForKey:@"UserAgent"] isEqualToString:@"FireFox"] ) {
                 
-                useragent = FIREFOX_USERAGENT;
+                useragent = FIREFOX_USER_AGENT;
                 
             } else if ( [[USER_DEFAULTS objectForKey:@"UserAgent"] isEqualToString:@"iPad"] ) {
                 
-                useragent = IPAD_USERAFENT;
+                useragent = IPAD_USER_AGENT;
             }
             
             NSString *adDeleteUrl = [NSString stringWithString:accessURL];
@@ -1080,45 +1046,49 @@
                     
                     sourceCode = [sourceCode replaceWord:@"width='300' height='250'><a href='http://d.href.asia/nw/d/ck.php"
                                             replacedWord:@"width='0' height='0'><a href='http://d.href.asia/nw/d/ck.php"];
-                    sourceCode = [sourceCode deleteWord:@"accesstrade.net"];
-                    sourceCode = [sourceCode deleteWord:@"adingo.jp"];
-                    sourceCode = [sourceCode deleteWord:@"amoad.com"];
-                    sourceCode = [sourceCode deleteWord:@"spstatic.ameba.jp"];
-                    sourceCode = [sourceCode deleteWord:@"searchteria.co.jp/ad"];
-                    sourceCode = [sourceCode deleteWord:@"ad.douga-kan.com"];
-                    sourceCode = [sourceCode deleteWord:@"mo.preaf.jp"];
-                    sourceCode = [sourceCode deleteWord:@"adlantis"];
-                    sourceCode = [sourceCode deleteWord:@"ad-stir.com"];
-                    sourceCode = [sourceCode deleteWord:@"adpimg.yicha.jp"];
-                    sourceCode = [sourceCode deleteWord:@"static.adroute.focas.jp"];
-                    sourceCode = [sourceCode deleteWord:@"ad.searchteria.co.jp"];
-                    sourceCode = [sourceCode deleteWord:@"ad.maist.jp"];
-                    sourceCode = [sourceCode deleteWord:@"adclr.jp"];
-                    sourceCode = [sourceCode deleteWord:@"blog.fc2.com/adclick"];
-                    sourceCode = [sourceCode deleteWord:@"aimg.fc2.com"];
-                    sourceCode = [sourceCode deleteWord:@"i.amoad.com"];
-                    sourceCode = [sourceCode deleteWord:@"i-mobile.co.jp"];
-                    sourceCode = [sourceCode deleteWord:@"imobile_"];
-                    sourceCode = [sourceCode deleteWord:@"microad.jp"];
-                    sourceCode = [sourceCode deleteWord:@"AdLantisLoader.js"];
-                    sourceCode = [sourceCode deleteWord:@"AdLoader.js"];
-                    sourceCode = [sourceCode deleteWord:@"adstir.js"];
-                    sourceCode = [sourceCode deleteWord:@"adssp.js"];
-                    sourceCode = [sourceCode deleteWord:@"asad.js"];
-                    sourceCode = [sourceCode deleteWord:@"smtad.js"];
-                    sourceCode = [sourceCode deleteWord:@"ads.js"];
-                    sourceCode = [sourceCode deleteWord:@"show_ad"];
-                    sourceCode = [sourceCode deleteWord:@"trigger_liv.js"];
-                    sourceCode = [sourceCode deleteWord:@"ajs.php"];
-                    sourceCode = [sourceCode deleteWord:@"js/ad.js"];
-                    sourceCode = [sourceCode deleteWord:@"Spad.js"];
-                    sourceCode = [sourceCode deleteWord:@"spad.js"];
-                    sourceCode = [sourceCode deleteWord:@"j.sprout-ad.com"];
-                    sourceCode = [sourceCode deleteWord:@"api.unthem.com"];
-                    sourceCode = [sourceCode deleteWord:@"anchovy.js"];
-                    sourceCode = [sourceCode deleteWord:@"bongore.js"];
-                    sourceCode = [sourceCode deleteWord:@"chorizo.js"];
-                    
+                    NSArray *deleteWords = @[
+                                             @"accesstrade.net",
+                                             @"adingo.jp",
+                                             @"amoad.com",
+                                             @"media-rep.com",
+                                             @"api.unthem.com",
+                                             @"spstatic.ameba.jp",
+                                             @"searchteria.co.jp/ad",
+                                             @"ad.douga-kan.com",
+                                             @"mo.preaf.jp",
+                                             @"adlantis",
+                                             @"ad-stir.com",
+                                             @"adpimg.yicha.jp",
+                                             @"static.adroute.focas.jp",
+                                             @"ad.searchteria.co.jp",
+                                             @"ad.maist.jp",
+                                             @"adclr.jp",
+                                             @"blog.fc2.com/adclick",
+                                             @"aimg.fc2.com",
+                                             @"i.amoad.com",
+                                             @"i-mobile.co.jp",
+                                             @"imobile_",
+                                             @"microad.jp",
+                                             @"AdLantisLoader.js",
+                                             @"AdLoader.js",
+                                             @"adstir.js",
+                                             @"adssp.js",
+                                             @"asad.js",
+                                             @"smtad.js",
+                                             @"ads.js",
+                                             @"show_ad",
+                                             @"trigger_liv.js",
+                                             @"ajs.php",
+                                             @"js/ad.js",
+                                             @"Spad.js",
+                                             @"spad.js",
+                                             @"j.sprout-ad.com",
+                                             @"anchovy.js",
+                                             @"bongore.js",
+                                             @"chorizo.js"
+                                             ];
+                    sourceCode = [sourceCode deleteWords:deleteWords];
+
 //                    NSLog(@"sourceCode: %@", sourceCode);
                     
                     [_wv loadHTMLString:sourceCode baseURL:URL];
@@ -1176,10 +1146,31 @@
         //PC版UAで開き直す
         } else if ( buttonIndex == 8 ) {
             
-            self.appDelegate.pcUaMode = YES;
             [USER_DEFAULTS setObject:@"FireFox" forKey:@"UserAgent"];
-            [self pushComposeButton:nil];
-        
+
+            NSString *useragent = IPHONE_USER_AGENT;
+            
+            if ( [[USER_DEFAULTS objectForKey:@"UserAgent"] isEqualToString:@"FireFox"] ) {
+                
+                useragent = FIREFOX_USER_AGENT;
+                
+            } else if ( [[USER_DEFAULTS objectForKey:@"UserAgent"] isEqualToString:@"iPad"] ) {
+                
+                useragent = IPAD_USER_AGENT;
+            }
+            
+            NSDictionary *dictionary = [[NSDictionary alloc] initWithObjectsAndKeys:useragent, @"UserAgent", nil];
+            [USER_DEFAULTS registerDefaults:dictionary];
+            
+            WebViewEx *webView = [[WebViewEx alloc] init];
+            [webView setScalesPageToFit:YES];
+            [webView setFrame:self.wv.frame];
+            [webView addSubview:self.grayView];
+            [self.view addSubview:webView];
+            [self.wv removeFromSuperview];
+            [self setWv:webView];
+            [webView loadRequestWithString:self.accessURL];
+            
         } else if ( buttonIndex == 9 ) {
             
             //Safariで開く
@@ -1266,7 +1257,7 @@
     
         NSNotification *notification = [NSNotification notificationWithName:@"SetTweetViewText"
                                                                      object:nil
-                                                                   userInfo:@{@"Text":quoteText}];
+                                                                   userInfo:@{@"Text":quoteText, @"CursorToTop" : @([USER_DEFAULTS boolForKey:@"QuoteCursorPosition"])}];
         [[NSNotificationCenter defaultCenter] postNotification:notification];
         
         dispatch_async(dispatch_get_main_queue(), ^{
@@ -1575,7 +1566,7 @@
     //保存メニューを表示するかチェック
     [self performSelectorInBackground:@selector(showDownloadMenu:) withObject:accessURL];
     
-    loading = YES;
+    pageLoading = YES;
     
     if ( ![[[request URL] absoluteString] isEqualToString:@"about:blank"] ) {
         
@@ -1595,7 +1586,7 @@
     accessURL = webView.request.URL.absoluteString;
     urlField.text = [ProtocolCutter url:webView.request.URL.absoluteString];
     
-    loading = NO;
+    pageLoading = NO;
     [ActivityIndicator off];
     [self updateWebBrowser];
 }
@@ -1618,7 +1609,7 @@
         
         [ShowAlert error:error.localizedDescription];
         
-        loading = NO;
+        pageLoading = NO;
         [ActivityIndicator off];
         [self updateWebBrowser];
     }
@@ -1634,7 +1625,7 @@
 
 - (void)reloadStopButton {
     
-    loading ? ( reloadButton.image = stopButtonImage ) : ( reloadButton.image = reloadButtonImage );
+    pageLoading ? ( reloadButton.image = stopButtonImage ) : ( reloadButton.image = reloadButtonImage );
 }
 
 - (void)backForwordButtonVisible {
@@ -1882,7 +1873,7 @@
     //NSLog(@"resetUserAgent");
     
     //「PC版UAで開き直す」ではなく、リセット設定がONでなく、空でない
-    if ( !self.appDelegate.pcUaMode && ![[USER_DEFAULTS objectForKey:@"UserAgentReset"] isEqualToString:@"OFF"] ) {
+    if ( ![[USER_DEFAULTS objectForKey:@"UserAgentReset"] isEqualToString:@"OFF"] ) {
         
         //NSLog(@"Reset: %@", [USER_DEFAULTS objectForKey:@"UserAgentReset"]);
         
@@ -1907,7 +1898,7 @@
             
             topBar.frame = CGRectMake(0, -44, SCREEN_WIDTH, TOOL_BAR_HEIGHT);
             _wv.frame = CGRectMake(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
-            bottomBar.frame = CGRectMake(0, SCREEN_HEIGHT, SCREEN_WIDTH, TOOL_BAR_HEIGHT);
+            bottomToolBar.frame = CGRectMake(0, SCREEN_HEIGHT, SCREEN_WIDTH, TOOL_BAR_HEIGHT);
             
             if ( editing ) {
                 
@@ -1924,7 +1915,7 @@
             
             topBar.frame = CGRectMake(0, 0, SCREEN_WIDTH, TOOL_BAR_HEIGHT);
             _wv.frame = CGRectMake(0, TOOL_BAR_HEIGHT, SCREEN_WIDTH, SCREEN_HEIGHT - TOOL_BAR_HEIGHT * 2);
-            bottomBar.frame = CGRectMake(0, SCREEN_HEIGHT - TOOL_BAR_HEIGHT, SCREEN_WIDTH, TOOL_BAR_HEIGHT);
+            bottomToolBar.frame = CGRectMake(0, SCREEN_HEIGHT - TOOL_BAR_HEIGHT, SCREEN_WIDTH, TOOL_BAR_HEIGHT);
             
             if ( editing ) {
                 
@@ -1945,7 +1936,7 @@
 
             topBar.frame = CGRectMake(0, -44, SCREEN_HEIGHT, TOOL_BAR_HEIGHT);
             _wv.frame = CGRectMake(0, 0, SCREEN_HEIGHT, SCREEN_WIDTH);
-            bottomBar.frame = CGRectMake(0, SCREEN_WIDTH, SCREEN_HEIGHT, TOOL_BAR_HEIGHT);
+            bottomToolBar.frame = CGRectMake(0, SCREEN_WIDTH, SCREEN_HEIGHT, TOOL_BAR_HEIGHT);
             
             if ( editing ) {
                 
@@ -1962,7 +1953,7 @@
 
             topBar.frame = CGRectMake(0, 0, SCREEN_HEIGHT, TOOL_BAR_HEIGHT);
             _wv.frame = CGRectMake(0, TOOL_BAR_HEIGHT, SCREEN_HEIGHT, SCREEN_WIDTH - TOOL_BAR_HEIGHT * 2);
-            bottomBar.frame = CGRectMake(0, SCREEN_WIDTH - TOOL_BAR_HEIGHT, SCREEN_HEIGHT, TOOL_BAR_HEIGHT);
+            bottomToolBar.frame = CGRectMake(0, SCREEN_WIDTH - TOOL_BAR_HEIGHT, SCREEN_HEIGHT, TOOL_BAR_HEIGHT);
             
             if ( editing ) {
                 
@@ -2080,7 +2071,6 @@
     
     NSLog(@"%s", __func__);
     
-//    self.appDelegate.browserOpenMode = NO;
 //    self.appDelegate.urlSchemeDownloadUrl = BLANK;
 //    
 //    [self setTopBar:nil];
@@ -2107,7 +2097,6 @@
     
     NSLog(@"%s", __func__);
     
-    self.appDelegate.browserOpenMode = NO;
     self.appDelegate.urlSchemeDownloadUrl = BLANK;
     
     if ( _wv.loading ) [_wv stopLoading];
@@ -2117,7 +2106,7 @@
     REMOVE_SAFETY(urlField);
     REMOVE_SAFETY(searchField);
     REMOVE_SAFETY(topBar);
-    REMOVE_SAFETY(bottomBar);
+    REMOVE_SAFETY(bottomToolBar);
     REMOVE_SAFETY(bytesLabel);
     REMOVE_SAFETY(progressBar);
     REMOVE_SAFETY(downloadCancelButton);

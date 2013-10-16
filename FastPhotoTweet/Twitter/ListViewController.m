@@ -12,14 +12,14 @@
 
 @interface ListViewController ()
 
-@property (strong, nonatomic) NSArray *lists;
+@property (strong, nonatomic) NSArray *allLists;
 
 @end
 
 @implementation ListViewController
 @synthesize topBar;
 @synthesize closeButton;
-@synthesize listTable;
+@synthesize listsTable;
 
 - (id)initWithNibName:(NSString *)nibNameOrNil bundle:(NSBundle *)nibBundleOrNil {
     
@@ -56,7 +56,7 @@
                                name:LISTS_LIST_DONE_NOTIFICATION
                              object:nil];
     
-    if ( [[[TWTweets manager] lists] count] == 0 ) {
+    if ( [[[TWTweets manager] allLists] count] == 0 ) {
     
         //取得済みリストがない場合は取得
         NSMutableDictionary *parameters = [@{} mutableCopy];
@@ -70,18 +70,18 @@
     } else {
         
         //取得済みリストがある場合は表示
-        [self setLists:[[TWTweets manager] lists]];
+        [self setAllLists:[[TWTweets manager] allLists]];
     }
 }
 
 - (void)receiveListAll:(NSNotification *)center {
     
-    [self setLists:[center.userInfo objectForKey:RESPONSE_DATA]];
-    [[TWTweets manager] setLists:[center.userInfo objectForKey:RESPONSE_DATA]];
+    [self setAllLists:[center.userInfo objectForKey:RESPONSE_DATA]];
+    [[TWTweets manager] setAllLists:[center.userInfo objectForKey:RESPONSE_DATA]];
     
-    NSLog(@"listData: %d", [[[TWTweets manager] lists] count]);
+    NSLog(@"listData: %d", [[[TWTweets manager] allLists] count]);
     
-    [listTable reloadData];
+    [listsTable reloadData];
 }
 
 - (IBAction)pushCloseButton:(id)sender {
@@ -94,7 +94,7 @@
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
     
     //TableViewの要素数を返す
-	return [self.lists count];
+	return [self.allLists count];
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
@@ -114,7 +114,7 @@
     
     [cell.textLabel setFont:[UIFont systemFontOfSize:14.0f]];
     [cell.textLabel setNumberOfLines:0];
-    [cell.textLabel setText:self.lists[indexPath.row][@"full_name"]];
+    [cell.textLabel setText:self.allLists[indexPath.row][@"full_name"]];
     
     return cell;
 }
@@ -127,11 +127,11 @@
     
     if ( self.listSelectMode ) {
         
-        NSLog(@"SelectTimelineList: %@ : %@", [TWAccounts currentAccountName], [[self.lists objectAtIndex:indexPath.row] objectForKey:@"id_str"]);
+        NSLog(@"SelectTimelineList: %@ : %@", [TWAccounts currentAccountName], [[self.allLists objectAtIndex:indexPath.row] objectForKey:@"id_str"]);
         
         NSMutableDictionary *accounts = [[USER_DEFAULTS dictionaryForKey:@"TimelineList"] mutableCopy];
         
-        [accounts setObject:[[self.lists objectAtIndex:indexPath.row] objectForKey:@"id_str"]
+        [accounts setObject:[[self.allLists objectAtIndex:indexPath.row] objectForKey:@"id_str"]
                      forKey:[TWAccounts currentAccountName]];
         
         [USER_DEFAULTS setObject:accounts
@@ -140,7 +140,7 @@
     } else {
         
         //リストIDを記憶
-        [[TWTweets manager] setListID:self.lists[indexPath.row][@"id_str"]];
+        [[TWTweets manager] setListID:self.allLists[indexPath.row][@"id_str"]];
     }
     
     //閉じる
@@ -163,7 +163,7 @@
     
     [self setTopBar:nil];
     [self setCloseButton:nil];
-    [self setListTable:nil];
+    [self setListsTable:nil];
     [super viewDidUnload];
 }
 
@@ -171,7 +171,7 @@
     
     [self setTopBar:nil];
     [self setCloseButton:nil];
-    [self setListTable:nil];
+    [self setListsTable:nil];
 }
 
 @end

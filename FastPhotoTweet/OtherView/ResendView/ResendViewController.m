@@ -10,8 +10,6 @@
 #import "TWTweets.h"
 #import "TWTweet.h"
 
-#define BLANK @""
-
 @implementation ResendViewController
 @synthesize resendTable;
 @synthesize bar;

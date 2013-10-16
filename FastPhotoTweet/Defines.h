@@ -10,6 +10,7 @@ typedef enum {
     TimelineCellTypeMenu
 } TimelineCellType;
 
+#define BLANK @""
 #define SCREEN_HEIGHT [UIScreen mainScreen].applicationFrame.size.height
 #define SCREEN_WIDTH [UIScreen mainScreen].applicationFrame.size.width
 #define MAIN_MARGIN 4.0f
@@ -47,3 +48,6 @@ typedef enum {
 #define TWITPIC_API_KEY @"95cf146048caad3267f95219b379e61c"
 #define OAUTH_KEY       @"dVbmOIma7UCc5ZkV3SckQ"
 #define OAUTH_SECRET    @"wnDptUj4VpGLZebfLT3IInTZPkPS4XimYh6WXAmdI"
+
+#define IMGUR_API_URL @"http://api.imgur.com/2/upload.json"
+#define TWITPIC_API_URL @"http://api.twitpic.com/1/upload.json"

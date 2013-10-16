@@ -13,15 +13,15 @@
 
 @property (retain, nonatomic) UIView *grayView;
 @property (retain, nonatomic) UIActivityIndicatorView *activityIndicator;
-@property (retain, nonatomic) NSString *taskName;
+@property (retain, nonatomic) NSString *activityTaskName;
 @property NSInteger startCount;
 
 + (ActivityGrayView *)grayView;
-+ (ActivityGrayView *)grayViewWithTaskName:(NSString *)taskName;
++ (ActivityGrayView *)grayViewWithActivityTaskName:(NSString *)activityTaskName;
 
 - (void)setDefault;
 
-- (void)addTaskName:(NSString *)taskName;
+- (void)addActivityTaskName:(NSString *)activityTaskName;
 - (void)start;
 - (void)end;
 - (void)forceEnd;

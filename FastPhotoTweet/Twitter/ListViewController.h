@@ -14,7 +14,7 @@
 
 @property (retain, nonatomic) IBOutlet UINavigationBar *topBar;
 @property (retain, nonatomic) IBOutlet UIBarButtonItem *closeButton;
-@property (retain, nonatomic) IBOutlet UITableView *listTable;
+@property (retain, nonatomic) IBOutlet UITableView *listsTable;
 
 - (IBAction)pushCloseButton:(id)sender;
 

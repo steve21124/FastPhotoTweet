@@ -15,6 +15,8 @@
               replacedWord:(NSString *)replacedWord;
 
 - (NSString *)deleteWord:(NSString *)deleteWord;
+- (NSString *)deleteWords:(NSArray *)deleteWords;
+
 - (NSMutableString *)deleteMutableWord:(NSString *)deleteWord;
 - (NSString *)deleteWhiteSpace;
 

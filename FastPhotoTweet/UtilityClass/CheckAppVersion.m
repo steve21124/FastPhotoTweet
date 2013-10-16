@@ -57,8 +57,8 @@
             
             NSString *latestBuildVersion = splitedLatestVersionInfo[1];
             NSNumber *requiredFlag = @NO;
-            NSString *title = @"";
-            NSString *message = @"";
+            NSString *title = DEFAULT_TITLE;
+            NSString *message = DEFAULT_MESSAGE;
             
             if ( [splitedLatestVersionInfo count] > 2 ) {
                 
@@ -78,13 +78,6 @@
             if ( [splitedLatestVersionInfo count] > 4 ) {
                 
                 message = splitedLatestVersionInfo[4];
-            }
-            
-            if ( [title isEmpty] ||
-                 [message isEmpty] ) {
-                
-                title = DEFAULT_TITLE;
-                message = DEFAULT_MESSAGE;
             }
             
             NSInteger currentBuildVersionNumber = [currentBuildVersion integerValue];
@@ -116,6 +109,23 @@
          
             [[UIApplication sharedApplication] openURL:updateIpaURL];
         }
+    }
+}
+
++ (BOOL)isBuildSDK7later {
+    
+    UIViewController *viewController = [[UIViewController alloc] init];
+    UIView *view = viewController.view;
+    CGRect rect = view.frame;
+    if ( CGRectGetHeight(rect) == CGRectGetHeight([[UIScreen mainScreen] bounds]) &&
+        ![viewController wantsFullScreenLayout] &&
+         [FIRMWARE_VERSION hasPrefix:@"7"] ) {
+        
+        return YES;
+        
+    } else {
+        
+        return NO;
     }
 }
 

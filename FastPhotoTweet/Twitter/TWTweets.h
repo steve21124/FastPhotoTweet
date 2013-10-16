@@ -26,7 +26,7 @@ typedef enum {
 @property (copy, nonatomic) NSString *inReplyToID;
 @property (copy, nonatomic) NSString *tabChangeFunction;
 
-@property (retain, nonatomic) NSArray *lists;
+@property (retain, nonatomic) NSArray *allLists;
 @property (copy, nonatomic) NSString *listID;
 @property (copy, nonatomic) NSString *showingListID;
 

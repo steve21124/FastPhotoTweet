@@ -6,7 +6,7 @@
 
 @interface TWAccounts ()
 
-@property (nonatomic, strong) ACAccountStore *store;
+@property (nonatomic, strong) ACAccountStore *accountStore;
 
 + (void)getTwitterAccounts;
 
@@ -51,9 +51,9 @@ static TWAccounts *sharedObject = nil;
     
     NSLog(@"getTwitterAccounts");
     
-    [[TWAccounts manager] setStore:[[[ACAccountStore alloc] init] autorelease]];
-    ACAccountType *type = [[[TWAccounts manager] store] accountTypeWithAccountTypeIdentifier:ACAccountTypeIdentifierTwitter];
-    [[TWAccounts manager] setTwitterAccounts:[[[TWAccounts manager] store] accountsWithAccountType:type]];
+    [[TWAccounts manager] setAccountStore:[[[ACAccountStore alloc] init] autorelease]];
+    ACAccountType *type = [[[TWAccounts manager] accountStore] accountTypeWithAccountTypeIdentifier:ACAccountTypeIdentifierTwitter];
+    [[TWAccounts manager] setTwitterAccounts:[[[TWAccounts manager] accountStore] accountsWithAccountType:type]];
 }
 
 - (id)copyWithZone:(NSZone *)zone {

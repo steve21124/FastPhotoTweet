@@ -63,7 +63,12 @@
                                         CGImageGetDataProvider(maskRef), NULL, false);
     
     CGImageRef masked = CGImageCreateWithMask([image CGImage], mask);
-    return [UIImage imageWithCGImage:masked];
+    CGImageRelease(mask);
+    
+    UIImage *maskedImage = [UIImage imageWithCGImage:masked];
+    CGImageRelease(masked);
+    
+    return maskedImage;
 }
 
 @end

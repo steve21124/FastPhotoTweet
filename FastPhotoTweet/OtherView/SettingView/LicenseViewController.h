@@ -6,15 +6,9 @@
 //
 
 #import <UIKit/UIKit.h>
-#import "AppDelegate.h"
 
-@interface LicenseViewController : UIViewController {
-    
-    BOOL debugMode;
-}
+@interface LicenseViewController : UIViewController
 
 @property (retain, nonatomic) IBOutlet UITextView *textView;
-
-- (IBAction)debug:(id)sender;
 
 @end

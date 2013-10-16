@@ -15,6 +15,8 @@
 
 @interface BaseViewController : UIViewController
 
+//@property (strong, nonatomic) UIView *contentsView;
+
 - (void)showModalViewController:(UIViewController *)modalViewController;
 - (void)dismissModalViewController:(UIViewController *)modalViewController;
 

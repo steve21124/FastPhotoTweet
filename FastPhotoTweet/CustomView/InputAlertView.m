@@ -4,145 +4,186 @@
 
 #import "InputAlertView.h"
 
-#define CANCEL_BUTTON 0
-#define OK_BUTTON 1
+@interface InputAlertView () <UITextFieldDelegate>
 
 typedef enum {
-    TextFieldTypeSingle,
-    TextFieldTypeMultiTop,
-    TextFieldTypeMultiBottom
-}TextFieldType;
-
-@interface InputAlertView ()
-
-- (void)doAction;
+    TextFieldIndexTop,
+    TextFieldIndexBottom,
+} TextFieldIndex;
 
 @end
 
 @implementation InputAlertView
 
-- (id)initWithTitle:(NSString *)title
-           delegate:(id)delegate
-  cancelButtonTitle:(NSString *)cancelButtonTitle
-    doneButtonTitle:(NSString *)doneButtonTitle
-  isMultiInputField:(BOOL)isMultiInputField
-         doneAction:(SEL)doneAction {
+- (instancetype)initWithTitle:(NSString *)title message:(NSString *)message delegate:(id)delegate cancelButtonTitle:(NSString *)cancelButtonTitle okButtonTitle:(NSString *)okButtonTitle inputStyle:(InputAlertViewStyle)inputStyle {
+    
+    return [self initWithTitle:title
+                       message:message
+                      delegate:delegate
+             cancelButtonTitle:cancelButtonTitle
+                 okButtonTitle:okButtonTitle
+            cancelButtonAction:nil
+                okButtonAction:nil
+                    inputStyle:inputStyle];
+}
+
+- (instancetype)initWithTitle:(NSString *)title message:(NSString *)message delegate:(id)delegate cancelButtonTitle:(NSString *)cancelButtonTitle okButtonTitle:(NSString *)okButtonTitle cancelButtonAction:(SEL)cancelButtonAction okButtonAction:(SEL)okButtonAction  inputStyle:(InputAlertViewStyle)inputStyle {
     
     self = [super initWithTitle:title
-                        message:isMultiInputField ? @"\n\n" : @"\n"
-                       delegate:self
+                        message:message
+                       delegate:delegate
               cancelButtonTitle:cancelButtonTitle
-              otherButtonTitles:doneButtonTitle, nil];
+              otherButtonTitles:okButtonTitle, nil];
     
     if ( self ) {
-
-        [self setDoneAction:doneAction];
-        [self setIsMultiInputField:isMultiInputField];
-        [self setTarget:delegate];
         
-        if ( isMultiInputField ) {
-            
-            self.multiTextFieldTop = [[SwipeShiftTextField alloc] initWithFrame:CGRectMake(12.0f,
-                                                                                           40.0f,
-                                                                                           260.0f,
-                                                                                           25.0f)];
-            [self.multiTextFieldTop setBackgroundColor:[UIColor whiteColor]];
-            [self.multiTextFieldTop setContentVerticalAlignment:UIControlContentVerticalAlignmentCenter];
-            [self.multiTextFieldTop setDelegate:self];
-            [self.multiTextFieldTop setText:@""];
-            [self.multiTextFieldTop setTag:TextFieldTypeMultiTop];
-            [self addSubview:self.multiTextFieldTop];
-            
-            self.multiTextFieldBottom = [[SwipeShiftTextField alloc] initWithFrame:CGRectMake(12.0f,
-                                                                                              CGRectGetMaxY(self.multiTextFieldTop.frame) + 2.0f,
-                                                                                              260.0f,
-                                                                                              25.0f)];
-            [self.multiTextFieldBottom setBackgroundColor:[UIColor whiteColor]];
-            [self.multiTextFieldBottom setContentVerticalAlignment:UIControlContentVerticalAlignmentCenter];
-            [self.multiTextFieldBottom setDelegate:self];
-            [self.multiTextFieldBottom setText:@""];
-            [self.multiTextFieldBottom setTag:TextFieldTypeMultiBottom];
-            [self addSubview:self.multiTextFieldBottom];
-            
-        } else {
-            
-            self.singleTextField = [[SwipeShiftTextField alloc] initWithFrame:CGRectMake(12.0f,
-                                                                                         40.0f,
-                                                                                         260.0f,
-                                                                                         25.0f)];
-            [self.singleTextField setBackgroundColor:[UIColor whiteColor]];
-            [self.singleTextField setContentVerticalAlignment:UIControlContentVerticalAlignmentCenter];
-            [self.singleTextField setDelegate:self];
-            [self.singleTextField setText:@""];
-            [self.multiTextFieldTop setTag:TextFieldTypeSingle];
-            [self addSubview:self.singleTextField];
-        }
+        [self setCancelButtonAction:cancelButtonAction];
+        [self setOkButtonAction:okButtonAction];
+        [self setInputStyle:inputStyle];
     }
     
     return self;
 }
 
-- (void)doAction {
+////////////////////////////////////////////////////////////////////////////////
+
+- (void)setInputStyle:(InputAlertViewStyle)inputStyle {
     
-    [self.singleTextField resignFirstResponder];
-    [self.multiTextFieldTop resignFirstResponder];
-    [self.multiTextFieldBottom resignFirstResponder];
+    switch ( inputStyle ) {
+            
+        case InputAlertViewStyleNone:
+            [self setAlertViewStyle:UIAlertViewStyleDefault];
+            break;
+            
+        case InputAlertViewStyleSingle:
+            [self setAlertViewStyle:UIAlertViewStylePlainTextInput];
+            [self.topTextField setDelegate:self.delegate];
+            [self.topTextField setPlaceholder:@""];
+            break;
+            
+        case InputAlertViewStyleSingleSecure:
+            [self setAlertViewStyle:UIAlertViewStylePlainTextInput];
+            [self.topTextField setSecureTextEntry:YES];
+            [self.topTextField setDelegate:self.delegate];
+            [self.topTextField setPlaceholder:@""];
+            break;
+            
+        case InputAlertViewStyleDouble:
+            [self setAlertViewStyle:UIAlertViewStyleLoginAndPasswordInput];
+            [self.bottomTextField setSecureTextEntry:NO];
+            [self.topTextField setDelegate:self.delegate];
+            [self.bottomTextField setDelegate:self.delegate];
+            [self.topTextField setPlaceholder:@""];
+            [self.bottomTextField setPlaceholder:@""];
+            break;
+            
+        case InputAlertViewStyleDoubleSecure:
+            [self setAlertViewStyle:UIAlertViewStyleLoginAndPasswordInput];
+            [self.topTextField setDelegate:self.delegate];
+            [self.bottomTextField setDelegate:self.delegate];
+            [self.topTextField setPlaceholder:@""];
+            [self.bottomTextField setPlaceholder:@""];
+            break;
+            
+        default:
+            [self setAlertViewStyle:UIAlertViewStyleDefault];
+            break;
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+- (UITextField *)topTextField {
     
-    if ( self.isMultiInputField ) {
+    if ( self.alertViewStyle != UIAlertViewStyleDefault ) {
+        
+        return [self textFieldAtIndex:TextFieldIndexTop];
+        
+    } else {
+        
+        return nil;
+    }
+}
+
+- (NSString *)topTextFieldText {
     
+    return [[self topTextField] text];
+}
+
+- (void)setTopTextFieldText:(NSString *)text placeholder:(NSString *)placeholder {
+    
+    UITextField *topTextField = [self topTextField];
+    [topTextField setText:text];
+    [topTextField setPlaceholder:placeholder];
+}
+
+- (UITextField *)bottomTextField {
+    
+    if ( self.alertViewStyle != UIAlertViewStyleDefault ) {
+        
+        return [self textFieldAtIndex:TextFieldIndexBottom];
+        
+    } else {
+        
+        return nil;
+    }
+}
+
+- (NSString *)bottomTextFieldText {
+    
+    return [[self bottomTextField] text];
+}
+
+- (void)setBottomTextFieldText:(NSString *)text placeholder:(NSString *)placeholder {
+    
+    UITextField *bottomTextField = [self bottomTextField];
+    [bottomTextField setText:text];
+    [bottomTextField setPlaceholder:placeholder];
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+- (BOOL)textFieldShouldReturn:(UITextField *)textField {
+    
+    if ( self.inputStyle == InputAlertViewStyleSingle ||
+         self.inputStyle == InputAlertViewStyleSingleSecure ) {
+        
+        if ( self.okButtonAction ) {
+            
+            if ( [self.delegate respondsToSelector:self.okButtonAction] ) {
+                
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Warc-performSelector-leaks"
-        [self.target performSelector:self.doneAction
-                            withObject:self.multiTextFieldTop.text
-                            withObject:self.multiTextFieldBottom.text];
+                [self.delegate performSelector:self.okButtonAction
+                                    withObject:nil];
 #pragma clang diagnostic pop
+            }
+        }
         
-    } else {
+    } else if ( self.inputStyle == InputAlertViewStyleDouble ||
+                self.inputStyle == InputAlertViewStyleDoubleSecure ) {
         
+        if ( textField == self.bottomTextField ) {
+            
+            if ( self.okButtonAction ) {
+                
+                if ( [self.delegate respondsToSelector:self.okButtonAction] ) {
+                    
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Warc-performSelector-leaks"
-        [self.target performSelector:self.doneAction
-                            withObject:self.singleTextField.text];
+                    [self.delegate performSelector:self.okButtonAction
+                                        withObject:nil];
 #pragma clang diagnostic pop
+                }
+                
+            } else {
+                
+                [self.topTextField becomeFirstResponder];
+            }
+        }
     }
-}
-
-- (void)show {
     
-    [super show];
-    
-    if ( self.isMultiInputField ) {
-        
-        [self.multiTextFieldTop becomeFirstResponder];
-        
-    } else {
-        
-        [self.singleTextField becomeFirstResponder];
-    }
-}
-
-- (void)alertView:(UIAlertView *)alertView clickedButtonAtIndex:(NSInteger)buttonIndex {
-    
-    if ( buttonIndex == OK_BUTTON ) {
-        
-        [self doAction];
-    }
-}
-
-- (BOOL)textFieldShouldReturn:(SwipeShiftTextField *)textField {
-    
-    if ( textField.tag == TextFieldTypeMultiTop ) {
-        
-        [self.multiTextFieldBottom becomeFirstResponder];
-        return NO;
-        
-    } else {
-     
-        [self doAction];
-        [self dismissWithClickedButtonIndex:CANCEL_BUTTON
-                                   animated:YES];
-        return YES;
-    }
+    return YES;
 }
 
 @end

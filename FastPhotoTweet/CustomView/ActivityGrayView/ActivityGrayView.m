@@ -64,11 +64,11 @@
     return [[[ActivityGrayView alloc] init] autorelease];
 }
 
-+ (ActivityGrayView *)grayViewWithTaskName:(NSString *)taskName {
++ (ActivityGrayView *)grayViewWithActivityTaskName:(NSString *)activityTaskName {
     
     //タスク名を指定して初期化
     ActivityGrayView *grayView = [[[ActivityGrayView alloc] init] autorelease];
-    [grayView addTaskName:taskName];
+    [grayView addActivityTaskName:activityTaskName];
     
     return grayView;
 }
@@ -85,10 +85,10 @@
     _grayView.alpha = 1.0;
 }
 
-- (void)addTaskName:(NSString *)taskName {
+- (void)addActivityTaskName:(NSString *)activityTaskName {
     
     //タスク名を設定する
-    self.taskName = taskName;
+    self.activityTaskName = activityTaskName;
 }
 
 - (void)start {
@@ -183,7 +183,7 @@
                              //タスク名が設定されている場合はタスク名と共に処理完了の通知を行う
                              NSNotification *doneNotification = [NSNotification notificationWithName:@"GrayViewDone"
                                                                                               object:wself
-                                                                                            userInfo:@{ @"TaskName" : wself.taskName == nil ? @"" : wself.taskName }];
+                                                                                            userInfo:@{ @"ActivityTaskName" : wself.activityTaskName == nil ? @"" : wself.activityTaskName }];
                              [[NSNotificationCenter defaultCenter] postNotification:doneNotification];
                          }
          ];

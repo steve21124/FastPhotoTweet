@@ -7,14 +7,11 @@
 //
 
 #import "NSObject+EmptyCheck.h"
-#import "NSDictionary+DataExtraction.h"
 #import "NSArray+AppendUtil.h"
 
 #import "TWTweets.h"
 #import "TWTweet.h"
 #import "TWAccounts.h"
-
-#define BLANK @""
 
 @implementation TWTweets
 
@@ -52,7 +49,7 @@ static TWTweets *sharedObject = nil;
             sharedObject.text = @"";
             sharedObject.inReplyToID = @"";
             sharedObject.tabChangeFunction = @"";
-            sharedObject.lists = @[];
+            sharedObject.allLists = @[];
             sharedObject.listID = @"";
             sharedObject.showingListID = @"";
             

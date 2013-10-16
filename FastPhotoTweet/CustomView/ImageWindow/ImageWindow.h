@@ -9,6 +9,6 @@
 
 @interface ImageWindow : UIView <NSURLConnectionDelegate, UIActionSheetDelegate>
 
-- (void)loadImage:(NSString *)imageUrl viewRect:(CGRect)viewRect topMargin:(CGFloat)topMargin;
+- (void)loadImage:(NSString *)imageUrl viewRect:(CGRect)viewRect baseViewTopMargin:(CGFloat)baseViewTopMargin;
 
 @end

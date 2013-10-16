@@ -31,7 +31,7 @@ typedef enum {
 - (void)stopTimer:(NSNotification *)notification;
 - (void)startWaitTask:(NSNotification *)notification;
 - (void)stopWaitTask:(NSNotification *)notification;
-- (void)addTask:(NSNotification *)notification;
+- (void)addMessageTask:(NSNotification *)notification;
 - (void)checkTask;
 - (void)showTask:(NSString *)task;
 - (void)hideTask;
@@ -40,6 +40,6 @@ typedef enum {
 + (void)stopTimer;
 + (void)startWaitTask;
 + (void)stopWaitTask;
-+ (void)addTask:(NSString *)task;
++ (void)addMessageTask:(NSString *)messageTask;
 
 @end
